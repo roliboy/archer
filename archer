@@ -1,57 +1,55 @@
 #!/bin/bash
 
-get_boot_mode() {
-    [ -d '/sys/firmware/efi/efivars' ] && echo UEFI || echo BIOS
+detect_boot_mode() {
+    [ -d /sys/firmware/efi/efivars ] && echo UEFI || echo BIOS
 }
 
 get_drive() {
-    echo $( \
-        dialog --title 'Available drives:' \
-            --menu 'Select drive:' \
-            0 0 0 \
-            $( \
-                lsblk -lno NAME,SIZE,TYPE | \
-                grep disk | \
-                awk '{ print "/dev/"$1, $2 }' | \
-                sort -u \
-            ) \
-            --output-fd 1
-    )
+    dialog --title 'Target drive' \
+        --menu 'Select drive:' \
+        --output-fd 1 \
+        0 0 0 \
+        $(
+            lsblk -lno NAME,SIZE,TYPE |
+            grep disk |
+            awk '{ print "/dev/"$1, $2 }' |
+            sort -u
+        )
 }
 
 get_mirrorlist_country() {
-    echo $( \
-        dialog --title 'Available countries: ' \
-            --menu 'Select country: ' \
-            0 0 0 \
-            $( \
-                curl -s https://www.archlinux.org/mirrorlist/ | \
-                grep '<option value=".*">.*</option>' | \
-                awk -F'[<">]' '{ gsub(" ", "-", $5); print $3, $5 }' \
-            ) \
-        --output-fd 1
-    )
+    dialog --title 'Mirrorlist' \
+        --menu 'Select country: ' \
+        --output-fd 1 \
+        0 0 0 \
+        $(
+            curl -s https://www.archlinux.org/mirrorlist/ |
+            grep '<option value=".*">.*</option>' |
+            awk -F'[<">]' '{ gsub(" ", "-", $5); print $3, $5 }'
+        )
 }
 
 get_timezone() {
-    echo $( \
-        dialog --title 'Available timezones: ' \
-            --menu 'Select timezone: ' \
-            0 0 0 \
-            $( \
-                for zone in $(ls -F /usr/share/zoneinfo | grep \/$); do \
-                    for region in $(ls /usr/share/zoneinfo/$zone); do \
-                        echo $zone$region '-'; \
-                    done; \
-                done; \
-            ) \
-            --output-fd 1
-    )
+    dialog --title 'Timezone' \
+        --menu 'Select timezone: ' \
+        --output-fd 1 \
+        0 0 0 \
+        $(
+            for zone in $(ls -F /usr/share/zoneinfo | grep \/$); do
+                for region in $(ls /usr/share/zoneinfo/$zone); do
+                    echo $zone$region '-';
+                done;
+            done;
+        )
+}
+
+get_hostname() {
+    dialog --title 'Hostname' --inputbox "Enter hostname: " --output-fd 1 0 0
 }
 
 setup() {
     echo [LOG] > archer.log
-    boot_mode="$(get_boot_mode)"
+    boot_mode="$(detect_boot_mode)"
     echo [DEBUG]: boot mode: =$boot_mode= >> archer.log
     selected_drive="$(get_drive)"
     echo [DEBUG]: selected drve: =$selected_drive= >> archer.log
@@ -59,6 +57,8 @@ setup() {
     echo [DEBUG]: mirrorlist country: =$mirrorlist_country= >> archer.log
     timezone="$(get_timezone)"
     echo [DEBUG]: timezone: =$timezone= >> archer.log
+    hostname="$(get_hostname)"
+    echo [DEBUG]: hostname: =$hostname= >> archer.log
 }
 
 setup
