@@ -47,6 +47,14 @@ get_hostname() {
     dialog --title 'Hostname' --inputbox "Enter hostname: " --output-fd 1 0 0
 }
 
+get_username() {
+    dialog --title 'Username' --inputbox "Enter username: " --output-fd 1 0 0
+}
+
+get_password() {
+    dialog --title 'Password' --insecure --passwordbox "Enter password: " --output-fd 1 0 0
+}
+
 setup() {
     echo [LOG] > archer.log
     boot_mode="$(detect_boot_mode)"
@@ -59,6 +67,10 @@ setup() {
     echo [DEBUG]: timezone: =$timezone= >> archer.log
     hostname="$(get_hostname)"
     echo [DEBUG]: hostname: =$hostname= >> archer.log
+    username="$(get_username)"
+    echo [DEBUG]: username: =$username= >> archer.log
+    password="$(get_password)"
+    echo [DEBUG]: password: =$password= >> archer.log
 }
 
 setup
