@@ -33,6 +33,22 @@ get_mirrorlist_country() {
     )
 }
 
+get_timezone() {
+    echo $( \
+        dialog --title 'Available timezones: ' \
+            --menu 'Select timezone: ' \
+            0 0 0 \
+            $( \
+                for zone in $(ls -F /usr/share/zoneinfo | grep \/$); do \
+                    for region in $(ls /usr/share/zoneinfo/$zone); do \
+                        echo $zone$region '-'; \
+                    done; \
+                done; \
+            ) \
+            --output-fd 1
+    )
+}
+
 setup() {
     echo [LOG] > archer.log
     boot_mode="$(get_boot_mode)"
@@ -41,6 +57,8 @@ setup() {
     echo [DEBUG]: selected drve: =$selected_drive= >> archer.log
     mirrorlist_country="$(get_mirrorlist_country)"
     echo [DEBUG]: mirrorlist country: =$mirrorlist_country= >> archer.log
+    timezone="$(get_timezone)"
+    echo [DEBUG]: timezone: =$timezone= >> archer.log
 }
 
 setup
