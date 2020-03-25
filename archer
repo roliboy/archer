@@ -1,0 +1,12 @@
+#!/bin/bash
+
+get_boot_mode() {
+    [ -d "/sys/firmware/efi/efivars" ] && echo UEFI || echo BIOS
+}
+
+setup() {
+    boot_mode="$(get_boot_mode)"
+    echo [DEBUG]: current boot mode: =$boot_mode= > archer.log
+}
+
+setup
