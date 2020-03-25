@@ -1,12 +1,46 @@
 #!/bin/bash
 
 get_boot_mode() {
-    [ -d "/sys/firmware/efi/efivars" ] && echo UEFI || echo BIOS
+    [ -d '/sys/firmware/efi/efivars' ] && echo UEFI || echo BIOS
+}
+
+get_drive() {
+    echo $( \
+        dialog --title 'Available drives:' \
+            --menu 'Select drive:' \
+            0 0 0 \
+            $( \
+                lsblk -lno NAME,SIZE,TYPE | \
+                grep disk | \
+                awk '{ print "/dev/"$1, $2 }' | \
+                sort -u \
+            ) \
+            --output-fd 1
+    )
+}
+
+get_mirrorlist_country() {
+    echo $( \
+        dialog --title 'Available countries: ' \
+            --menu 'Select country: ' \
+            0 0 0 \
+            $( \
+                curl -s https://www.archlinux.org/mirrorlist/ | \
+                grep '<option value=".*">.*</option>' | \
+                awk -F'[<">]' '{ gsub(" ", "-", $5); print $3, $5 }' \
+            ) \
+        --output-fd 1
+    )
 }
 
 setup() {
+    echo [LOG] > archer.log
     boot_mode="$(get_boot_mode)"
-    echo [DEBUG]: current boot mode: =$boot_mode= > archer.log
+    echo [DEBUG]: boot mode: =$boot_mode= >> archer.log
+    selected_drive="$(get_drive)"
+    echo [DEBUG]: selected drve: =$selected_drive= >> archer.log
+    mirrorlist_country="$(get_mirrorlist_country)"
+    echo [DEBUG]: mirrorlist country: =$mirrorlist_country= >> archer.log
 }
 
 setup
