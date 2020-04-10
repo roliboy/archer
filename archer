@@ -23,6 +23,24 @@ detect_gpu_configuration() {
     echo "$configuration"
 }
 
+detect_wireless() {
+    [ -n "$(lspci | grep -i network | grep -i 'wireless\|WLAN\|wifi\|802.11')" ] && echo yes || echo no
+}
+
+detect_battery() {
+    [ -n "$(grep -i battery /sys/class/power_supply/*/type)" ] && echo yes || echo no
+}
+
+detect_touchpad() {
+    [ -n "$(grep -i touchpad /proc/bus/input/devices)" ] && echo yes || echo no
+}
+
+detect_ssd() {
+    [ -n "$(grep 0 /sys/block/*/queue/rotational)" ] && echo yes || echo no
+}
+
+
+
 get_drive() {
     dialog --title 'Target drive' \
         --menu 'Select drive:' \
@@ -112,6 +130,8 @@ download_mirrorlist() {
     wget -qO /etc/pacman.d/mirrorlist "$api_query"
 
     sed -i '/^#.*Server /s/^#//' /etc/pacman.d/mirrorlist
+
+    cat /etc/pacman.d/mirrorlist | grep Server | awk '{print "[DEBUG]: mirror:", $3}' >> archer.log
 }
 
 configure_pacman() {
@@ -131,6 +151,14 @@ setup() {
     echo [DEBUG]: cpu vendor: =$cpu_vendor= >> archer.log
     gpu_configuration="$(detect_gpu_configuration)"
     echo [DEBUG]: gpu configuration: =$gpu_configuration= >> archer.log
+    has_wireless="$(detect_wireless)"
+    echo [DEBUG]: wireless: =$has_wireless= >> archer.log
+    has_battery="$(detect_battery)"
+    echo [DEBUG]: battery: =$has_battery= >> archer.log
+    has_touchpad="$(detect_touchpad)"
+    echo [DEBUG]: touchpad: =$has_touchpad= >> archer.log
+    has_ssd="$(detect_ssd)"
+    echo [DEBUG]: ssd: =$has_ssd= >> archer.log
     selected_drive="$(get_drive)"
     echo [DEBUG]: selected drve: =$selected_drive= >> archer.log
     mirrorlist_country="$(get_mirrorlist_country)"
