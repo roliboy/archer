@@ -79,18 +79,23 @@ get_password() {
 
 
 create_partitions() {
-    parted -s "$1" mklabel gpt
+    for partition in $(parted -s $1 print | awk '/^ / {print $1}' | tac); do
+        umount -l ${1}$partition > /dev/null 2>&1
+        parted -s $1 rm $partition
+    done
 
-    parted -s "$1" mkpart ESP fat32 1MiB 513MiB
-    parted -s "$1" set 1 boot on
-    parted -s "$1" mkpart primary ext3 513MiB 100%
+    parted -s $1 mklabel gpt
 
-    mkfs.vfat "${1}1"
-    mkfs.ext4 "${1}2"
+    parted -s $1 mkpart ESP fat32 1MiB 513MiB
+    parted -s $1 set 1 boot on
+    parted -s $1 mkpart primary ext4 513MiB 100%
 
-    mount "${1}2" /mnt
+    mkfs.vfat ${1}1 > /dev/null 2>&1
+    mkfs.ext4 ${1}2 > /dev/null 2>&1
+
+    mount ${1}2 /mnt
     mkdir /mnt/boot
-    mount "${1}1" /mnt/boot
+    mount ${1}1 /mnt/boot
 }
 
 
