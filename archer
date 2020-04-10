@@ -74,6 +74,26 @@ get_password() {
     dialog --title 'Password' --insecure --passwordbox "Enter password: " --output-fd 1 0 0
 }
 
+
+
+
+
+create_partitions() {
+    parted -s "$1" mklabel gpt
+
+    parted -s "$1" mkpart ESP fat32 1MiB 513MiB
+    parted -s "$1" set 1 boot on
+    parted -s "$1" mkpart primary ext3 513MiB 100%
+
+    mkfs.vfat "${1}1"
+    mkfs.ext4 "${1}2"
+
+    mount "${1}2" /mnt
+    mkdir /mnt/boot
+    mount "${1}1" /mnt/boot
+}
+
+
 setup() {
     echo [LOG] > archer.log
     boot_mode="$(detect_boot_mode)"
@@ -94,6 +114,9 @@ setup() {
     echo [DEBUG]: username: =$username= >> archer.log
     password="$(get_password)"
     echo [DEBUG]: password: =$password= >> archer.log
+
+
+    create_partitions "$selected_drive"
 }
 
 setup
