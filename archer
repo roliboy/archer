@@ -76,12 +76,17 @@ get_password() {
 
 
 
+enable_ntp() {
+    timedatectl set-ntp true
+    echo [DEBUG]: network time protocol: =$(timedatectl show | grep '^NTP=' | cut -d'=' -f 2)= >> archer.log
+}
 
 
 create_partitions() {
     for partition in $(parted -s $1 print | awk '/^ / {print $1}' | tac); do
         umount -l ${1}$partition > /dev/null 2>&1
         parted -s $1 rm $partition
+        echo [DEBUG]: unmounting and deleting: =${1}$partition= >> archer.log
     done
 
     parted -s $1 mklabel gpt
@@ -97,6 +102,25 @@ create_partitions() {
     mkdir /mnt/boot
     mount ${1}1 /mnt/boot
 }
+
+
+download_mirrorlist() {
+    api_endpoint="https://www.archlinux.org/mirrorlist/?"
+    api_param_country="country=${1}&"
+    api_param_protocol="protocol=http&protocol=https&ip_version=4"
+    api_query="${api_endpoint}${api_param_country}${api_param_protocol}"
+    wget -qO /etc/pacman.d/mirrorlist "$api_query"
+
+    sed -i '/^#.*Server /s/^#//' /etc/pacman.d/mirrorlist
+}
+
+configure_pacman() {
+    sed -i '/Color/s/^#//g' /etc/pacman.conf
+    sed -i '/CheckSpace/s/^#//g' /etc/pacman.conf
+    sed -i '/VerbosePkgLists/s/^#//g' /etc/pacman.conf
+    sed -i '/VerbosePkgLists/a ILoveCandy' /etc/pacman.conf
+}
+
 
 
 setup() {
@@ -120,8 +144,13 @@ setup() {
     password="$(get_password)"
     echo [DEBUG]: password: =$password= >> archer.log
 
+    enable_ntp
 
     create_partitions "$selected_drive"
+
+    download_mirrorlist "$mirrorlist_country"
+
+    configure_pacman
 }
 
 setup
