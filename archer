@@ -4,6 +4,25 @@ detect_boot_mode() {
     [ -d /sys/firmware/efi/efivars ] && echo UEFI || echo BIOS
 }
 
+detect_cpu_vendor() {
+    [ -n "$(grep GenuineIntel /proc/cpuinfo)" ] && echo intel
+    [ -n "$(grep AuthenticAMD /proc/cpuinfo)" ] && echo amd
+}
+
+detect_gpu_configuration() {
+    [ -n "$(lspci | grep VGA | grep -i intel)" ] && local vga_controller=intel
+    [ -n "$(lspci | grep VGA | grep -i amd)" ] && local vga_controller=amd
+    [ -n "$(lspci | grep 3D | grep -i intel)" ] && local gfx_accelerator=intel
+    [ -n "$(lspci | grep 3D | grep -i amd)" ] && local gfx_accelerator=amd
+    [ -n "$(lspci | grep 3D | grep -i nvidia)" ] && local gfx_accelerator=nvidia
+
+    [ "$vga_controller" = intel ] && local configuration=intel
+    #TODO: test on different systems
+    [ "$vga_controller" = intel ] && [ "$gfx_accelerator" = nvidia ] && local configuration=optimus
+
+    echo "$configuration"
+}
+
 get_drive() {
     dialog --title 'Target drive' \
         --menu 'Select drive:' \
@@ -59,6 +78,10 @@ setup() {
     echo [LOG] > archer.log
     boot_mode="$(detect_boot_mode)"
     echo [DEBUG]: boot mode: =$boot_mode= >> archer.log
+    cpu_vendor="$(detect_cpu_vendor)"
+    echo [DEBUG]: cpu vendor: =$cpu_vendor= >> archer.log
+    gpu_configuration="$(detect_gpu_configuration)"
+    echo [DEBUG]: gpu configuration: =$gpu_configuration= >> archer.log
     selected_drive="$(get_drive)"
     echo [DEBUG]: selected drve: =$selected_drive= >> archer.log
     mirrorlist_country="$(get_mirrorlist_country)"
