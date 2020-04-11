@@ -23,12 +23,12 @@ detect_gpu_configuration() {
     echo "$configuration"
 }
 
-detect_wireless() {
-    [ -n "$(lspci | grep -i network | grep -i 'wireless\|WLAN\|wifi\|802.11')" ] && echo yes || echo no
-}
-
 detect_battery() {
     [ -n "$(grep -i battery /sys/class/power_supply/*/type)" ] && echo yes || echo no
+}
+
+detect_wireless() {
+    [ -n "$(lspci | grep -i network | grep -i 'wireless\|WLAN\|wifi\|802.11')" ] && echo yes || echo no
 }
 
 detect_touchpad() {
@@ -63,6 +63,16 @@ get_mirrorlist_country() {
             curl -s https://www.archlinux.org/mirrorlist/ |
             grep '<option value=".*">.*</option>' |
             awk -F'[<">]' '{ gsub(" ", "-", $5); print $3, $5 }'
+        )
+}
+
+get_locale() {
+    dialog --title 'Locale' \
+        --menu 'Select locale: ' \
+        --output-fd 1 \
+        0 0 0 \
+        $(
+            cat /etc/locale.gen | awk -F'#' '/#\w/ { print $2 }'
         )
 }
 
@@ -101,30 +111,30 @@ enable_ntp() {
 
 
 create_partitions() {
-    for partition in $(parted -s $1 print | awk '/^ / {print $1}' | tac); do
-        umount -l ${1}$partition > /dev/null 2>&1
-        parted -s $1 rm $partition
-        echo [DEBUG]: unmounting and deleting: =${1}$partition= >> archer.log
+    for partition in $(parted -s $selected_drive print | awk '/^ / {print $1}' | tac); do
+        umount -l ${selected_drive}$partition > /dev/null 2>&1
+        parted -s $selected_drive rm $partition
+        echo [DEBUG]: unmounting and deleting: =${selected_drive}$partition= >> archer.log
     done
 
-    parted -s $1 mklabel gpt
+    parted -s $selected_drive mklabel gpt
 
-    parted -s $1 mkpart ESP fat32 1MiB 513MiB
-    parted -s $1 set 1 boot on
-    parted -s $1 mkpart primary ext4 513MiB 100%
+    parted -s $selected_drive mkpart ESP fat32 1MiB 513MiB
+    parted -s $selected_drive set 1 boot on
+    parted -s $selected_drive mkpart primary ext4 513MiB 100%
 
-    mkfs.vfat ${1}1 > /dev/null 2>&1
-    mkfs.ext4 ${1}2 > /dev/null 2>&1
+    mkfs.vfat ${selected_drive}1 > /dev/null 2>&1
+    mkfs.ext4 ${selected_drive}2 > /dev/null 2>&1
 
-    mount ${1}2 /mnt
+    mount ${selected_drive}2 /mnt
     mkdir /mnt/boot
-    mount ${1}1 /mnt/boot
+    mount ${selected_drive}1 /mnt/boot
 }
 
 
 download_mirrorlist() {
     api_endpoint="https://www.archlinux.org/mirrorlist/?"
-    api_param_country="country=${1}&"
+    api_param_country="country=$mirrorlist_country&"
     api_param_protocol="protocol=http&protocol=https&ip_version=4"
     api_query="${api_endpoint}${api_param_country}${api_param_protocol}"
     wget -qO /etc/pacman.d/mirrorlist "$api_query"
@@ -141,18 +151,77 @@ configure_pacman() {
     sed -i '/VerbosePkgLists/a ILoveCandy' /etc/pacman.conf
 }
 
-
-install_base() {
-    packages=(
+install_pacman_packages() {
+    local packages=(
         base
         base-devel
         linux
         linux-firmware
+        $([ "$cpu_vendor" = intel ] && echo intel-ucode)
+        $([ "$cpu_vendor" = amd ] && echo amd-ucode)
+        networkmanager
+
+        $([ "$gpu_configuration" = nvidia ] && echo nvidia)
+
+        #TODO: change bumblebee to xrun for optimus support
+        $([ "$gpu_configuration" = optimus ] && echo nvidia)
+        $([ "$gpu_configuration" = optimus ] && echo mesa)
+        $([ "$gpu_configuration" = optimus ] && echo bumblebee)
+        $([ "$gpu_configuration" = optimus ] && echo bbswitch)
+
+        #TODO: advanced tlp config
+        $([ "$has_battery" = yes ] && echo tlp)
+        $([ "$has_battery" = yes ] && [ "$has_wireless" = yes ] && echo tlp-rdw)
+
+        #TODO: condition for acpilight
+        acpilight
+
+        xorg-server
+        xorg-xinit
+        xorg-apps
+        picom
     )
 
     for package in ${packages[@]}; do echo [DEBUG]: package: =$package= >> archer.log; done
 
     pacstrap /mnt ${packages[@]}
+}
+
+install_aur_packages() {
+    local packages=(
+        brave-bin
+        xcursor-breeze
+        nerd-fonts-hack
+    )
+
+    for package in ${packages[@]}; do echo [DEBUG]: AUR package: =$package= >> archer.log; done
+
+    for package in ${packages[@]}; do
+        wget -P /mnt/home/$username https://aur.archlinux.org/cgit/aur.git/snapshot/$package.tar.gz
+        arch-chroot /mnt /bin/bash <<< "cd /home/$username && \
+            sudo -u $username tar xfvz $package.tar.gz && \
+            cd $package && \
+            sudo -u $username makepkg -risc --noconfirm"
+        rm /mnt/home/$username/$package.tar.gz
+        rm -rf /mnt/home/$username/$package
+    done
+}
+
+generate_fstab() {
+    genfstab -U /mnt >> /mnt/etc/fstab
+    sed -i 's/relatime/noatime/g' /mnt/etc/fstab
+}
+
+#TODO: update this
+generate_locale() {
+    arch-chroot /mnt /bin/bash <<< "sed -i '/^#en_US\.UTF-8/s/^#//' /etc/locale.gen && \
+        locale-gen > /dev/null 2>&1 && \
+        echo 'LANG=en_US.UTF-8' > /etc/locale.conf"
+}
+
+set_timezone() {
+    arch-chroot /mnt /bin/bash <<< "ln -sf /usr/share/zoneinfo/$timezone /etc/localtime && \
+        hwclock --systohc"
 }
 
 
@@ -165,10 +234,10 @@ setup() {
     echo [DEBUG]: cpu vendor: =$cpu_vendor= >> archer.log
     gpu_configuration="$(detect_gpu_configuration)"
     echo [DEBUG]: gpu configuration: =$gpu_configuration= >> archer.log
-    has_wireless="$(detect_wireless)"
-    echo [DEBUG]: wireless: =$has_wireless= >> archer.log
     has_battery="$(detect_battery)"
     echo [DEBUG]: battery: =$has_battery= >> archer.log
+    has_wireless="$(detect_wireless)"
+    echo [DEBUG]: wireless: =$has_wireless= >> archer.log
     has_touchpad="$(detect_touchpad)"
     echo [DEBUG]: touchpad: =$has_touchpad= >> archer.log
     has_ssd="$(detect_ssd)"
@@ -177,6 +246,8 @@ setup() {
     echo [DEBUG]: selected drve: =$selected_drive= >> archer.log
     mirrorlist_country="$(get_mirrorlist_country)"
     echo [DEBUG]: mirrorlist country: =$mirrorlist_country= >> archer.log
+    locale="$(get_locale)"
+    echo [DEBUG]: locale: =$locale= >> archer.log
     timezone="$(get_timezone)"
     echo [DEBUG]: timezone: =$timezone= >> archer.log
     hostname="$(get_hostname)"
@@ -185,16 +256,23 @@ setup() {
     echo [DEBUG]: username: =$username= >> archer.log
     password="$(get_password)"
     echo [DEBUG]: password: =$password= >> archer.log
-
     enable_ntp
 
-    create_partitions "$selected_drive"
+    create_partitions
 
-    download_mirrorlist "$mirrorlist_country"
+    download_mirrorlist
 
     configure_pacman
 
-    install_base "$cpu_vendor" "$gpu_configuration" "$has_battery"
+    install_pacman_packages
+
+    install_aur_packages
+
+    generate_fstab
+
+    generate_locale
+
+    set_timezone
 }
 
 setup
