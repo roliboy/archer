@@ -131,7 +131,7 @@ download_mirrorlist() {
 
     sed -i '/^#.*Server /s/^#//' /etc/pacman.d/mirrorlist
 
-    cat /etc/pacman.d/mirrorlist | grep Server | awk '{print "[DEBUG]: mirror:", $3}' >> archer.log
+    cat /etc/pacman.d/mirrorlist | awk '/Server/ {print "[DEBUG]: mirror:", "="$3"="}' >> archer.log
 }
 
 configure_pacman() {
@@ -139,6 +139,20 @@ configure_pacman() {
     sed -i '/CheckSpace/s/^#//g' /etc/pacman.conf
     sed -i '/VerbosePkgLists/s/^#//g' /etc/pacman.conf
     sed -i '/VerbosePkgLists/a ILoveCandy' /etc/pacman.conf
+}
+
+
+install_base() {
+    packages=(
+        base
+        base-devel
+        linux
+        linux-firmware
+    )
+
+    for package in ${packages[@]}; do echo [DEBUG]: package: =$package= >> archer.log; done
+
+    pacstrap /mnt ${packages[@]}
 }
 
 
@@ -179,6 +193,8 @@ setup() {
     download_mirrorlist "$mirrorlist_country"
 
     configure_pacman
+
+    install_base "$cpu_vendor" "$gpu_configuration" "$has_battery"
 }
 
 setup
