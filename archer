@@ -1,5 +1,83 @@
 #!/bin/bash
 
+set_colorscheme() {
+    setterm -blank 0 -powersave off
+    echo -ne "\e]P02e3436" #black
+    echo -ne "\e]P8555753" #darkgrey
+    echo -ne "\e]P1cc0000" #darkred
+    echo -ne "\e]P9ef2929" #red
+    echo -ne "\e]P24e9a06" #darkgreen
+    echo -ne "\e]PA8ae234" #green
+    echo -ne "\e]P3c4a000" #brown
+    echo -ne "\e]PBfce94f" #yellow
+    echo -ne "\e]P43465a4" #darkblue
+    echo -ne "\e]PC729fcf" #blue
+    echo -ne "\e]P575507b" #darkmagenta
+    echo -ne "\e]PDad7fa8" #magenta
+    echo -ne "\e]P606989a" #darkcyan
+    echo -ne "\e]PE34e2e2" #cyan
+    echo -ne "\e]P7d3d7cf" #lightgrey
+    echo -ne "\e]PFeeeeec" #white
+    clear #for background artifacting
+}
+
+
+set_dialogrc() {
+    echo 'aspect = 0' > .dialogrc
+    echo 'separate_widget = ""' >> .dialogrc
+    echo 'tab_len = 0' >> .dialogrc
+    echo 'visit_items = off' >> .dialogrc
+    echo 'use_shadow = off' >> .dialogrc
+    echo 'use_colors = on' >> .dialogrc
+
+    echo 'screen_color = (cyan, black, on)' >> .dialogrc
+    echo 'dialog_color = (cyan, black, off)' >> .dialogrc
+    echo 'title_color = (cyan, black, off)' >> .dialogrc
+    echo 'border_color = (cyan, black, on)' >> .dialogrc
+    echo 'shadow_color = (black, black, off)' >> .dialogrc
+
+    echo 'button_inactive_color = dialog_color' >> .dialogrc
+    echo 'button_key_inactive_color = dialog_color' >> .dialogrc
+    echo 'button_label_inactive_color = dialog_color' >> .dialogrc
+
+    echo 'button_active_color = (cyan, black, on)' >> .dialogrc
+    echo 'button_key_active_color = (cyan, black, on)' >> .dialogrc
+    echo 'button_label_active_color = (cyan, black, off)' >> .dialogrc
+
+    echo 'tag_key_selected_color = (white, black, on)' >> .dialogrc
+    echo 'item_selected_color = tag_key_selected_color' >> .dialogrc
+
+    echo 'form_text_color = (yellow, green, on)' >> .dialogrc
+    echo 'form_item_readonly_color = (green, yellow, on)' >> .dialogrc
+
+    echo 'itemhelp_color = (white, blue, off)' >> .dialogrc
+
+    echo 'inputbox_color = dialog_color' >> .dialogrc
+    echo 'inputbox_border_color = dialog_color' >> .dialogrc
+    echo 'searchbox_color = dialog_color' >> .dialogrc
+    echo 'searchbox_title_color = title_color' >> .dialogrc
+    echo 'searchbox_border_color = border_color' >> .dialogrc
+    echo 'position_indicator_color = title_color' >> .dialogrc
+    echo 'menubox_color = dialog_color' >> .dialogrc
+    echo 'menubox_border_color = border_color' >> .dialogrc
+    echo 'item_color = dialog_color' >> .dialogrc
+    echo 'tag_color = title_color' >> .dialogrc
+    echo 'tag_selected_color = button_label_active_color' >> .dialogrc
+    echo 'tag_key_color = button_key_inactive_color' >> .dialogrc
+    echo 'check_color = dialog_color' >> .dialogrc
+    echo 'check_selected_color = button_active_color' >> .dialogrc
+    echo 'uarrow_color = screen_color' >> .dialogrc
+    echo 'darrow_color = screen_color' >> .dialogrc
+    echo 'form_active_text_color = button_active_color' >> .dialogrc
+    echo 'gauge_color = title_color' >> .dialogrc
+    echo 'border2_color = dialog_color' >> .dialogrc
+    echo 'searchbox_border2_color = dialog_color' >> .dialogrc
+    echo 'menubox_border2_color = dialog_color' >> .dialogrc
+
+    export DIALOGRC="$(pwd)/.dialogrc"
+}
+
+
 detect_boot_mode() {
     [ -d /sys/firmware/efi/efivars ] && echo UEFI || echo BIOS
 }
@@ -314,8 +392,16 @@ create_user() {
 #TODO: progress bar
 setup() {
     echo [LOG] > archer.log
+
+    set_colorscheme
+
+    set_dialogrc
+
     boot_mode="$(detect_boot_mode)"
     echo [DEBUG]: boot mode: =$boot_mode= >> archer.log
+
+    [ "$boot_mode" != UEFI ] && echo [ERROR]: boot mode not supported: =$boot_mode= >> archer.log
+
     cpu_vendor="$(detect_cpu_vendor)"
     echo [DEBUG]: cpu vendor: =$cpu_vendor= >> archer.log
     gpu_configuration="$(detect_gpu_configuration)"
