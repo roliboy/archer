@@ -217,6 +217,27 @@ generate_locale() {
         echo 'LANG=$locale' > /etc/locale.conf"
 }
 
+install_bootloader() {
+  arch-chroot /mnt /bin/bash <<< "bootctl --path=/boot install > /dev/null 2>&1"
+  echo 'default arch-*' > /mnt/boot/loader/loader.conf
+  echo 'title  Arch Linux' > /mnt/boot/loader/entries/arch.conf
+  echo 'linux  /vmlinuz-linux' >> /mnt/boot/loader/entries/arch.conf
+
+  [ "$cpu_vendor" = intel ] && \
+    echo 'initrd /intel-ucode.img' >> /mnt/boot/loader/entries/arch.conf
+  [ "$cpu_vendor" = amd ] && \
+    echo 'initrd /amd-ucodee.img' >> /mnt/boot/loader/entries/arch.conf
+
+  echo 'initrd /initramfs-linux.img' >> /mnt/boot/loader/entries/arch.conf
+
+  local root_uuid=$(blkid | \
+    grep ${selected_drive}2 | \
+    awk '{print $2}' | \
+    cut -d'"' -f 2)
+
+  echo "options root=UUID=$root_uuid rw" >> /mnt/boot/loader/entries/arch.conf
+}
+
 set_timezone() {
     arch-chroot /mnt /bin/bash <<< "ln -sf /usr/share/zoneinfo/$timezone /etc/localtime && \
         hwclock --systohc"
@@ -249,9 +270,8 @@ configure_libinput() {
 
 #TODO: modify master file
 configure_tlp() {
-    if [[ "$gpu_configuration" == optimus ]]; then
+    [ "$gpu_configuration" = optimus ] && \
         echo 'RUNTIME_PM_DRIVER_BLACKLIST="nouveau nvidia"' > /mnt/etc/tlp.d/10-driver-blacklist.conf
-    fi
 }
 
 configure_journald() {
@@ -276,6 +296,22 @@ enable_systemd_services_chroot() {
     [ "$gpu_configuration" = optimus ] && chroot "systemctl enable bumblebeed.service > /dev/null 2>&1"
 }
 
+set_root_password() {
+    arch-chroot /mnt /bin/bash <<< "yes $password | passwd > /dev/null 2>&1"
+}
+
+create_user() {
+    arch-chroot /mnt /bin/bash <<< "groupadd $username && \
+        useradd $username -m -g $username -G wheel,storage,power,network,video,audio,lp,sys,input && \
+        yes $password | passwd $username > /dev/null 2>&1 && \
+        chown -R $username:$username /home/$username"
+
+        sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^# //' /mnt/etc/sudoers
+        [ "$gpu_configuration" = optimus ] && \
+            arch-chroot /mnt /bin/bash <<< "gpasswd -a $username bumblebee"
+}
+
+#TODO: progress bar
 setup() {
     echo [LOG] > archer.log
     boot_mode="$(detect_boot_mode)"
@@ -324,6 +360,8 @@ setup() {
 
     generate_locale
 
+    install_bootloader
+
     #TODO: keymap
 
     set_timezone
@@ -333,15 +371,19 @@ setup() {
     configure_pacman
     echo [DEBUG]: pacman configured: =$([ -n "$(grep ILoveCandy /mnt/etc/pacman.conf)" ] && echo yes || echo no)= >> archer.log
 
-    configure_libinput
+    [ "$has_touchpad" = yes ] && configure_libinput
 
-    configure_tlp
+    [ "$has_battery" = yes ] && configure_tlp
 
     configure_journald
 
     configure_coredump
 
     enable_services
+
+    set_root_password
+
+    create_user
 }
 
 setup
