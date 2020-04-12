@@ -17,7 +17,7 @@ detect_gpu_configuration() {
     [ -n "$(lspci | grep 3D | grep -i nvidia)" ] && local gfx_accelerator=nvidia
 
     [ "$vga_controller" = intel ] && local configuration=intel
-    #TODO: test on different systems
+    [ "$vga_controller" = nvidia ] && local configuration=nvidia
     [ "$vga_controller" = intel ] && [ "$gfx_accelerator" = nvidia ] && local configuration=optimus
 
     echo "$configuration"
@@ -48,9 +48,7 @@ get_drive() {
         0 0 0 \
         $(
             lsblk -lno NAME,SIZE,TYPE |
-            grep disk |
-            awk '{ print "/dev/"$1, $2 }' |
-            sort -u
+            awk '/disk/ { print "/dev/"$1, $2 }'
         )
 }
 
@@ -61,8 +59,7 @@ get_mirrorlist_country() {
         0 0 0 \
         $(
             curl -s https://www.archlinux.org/mirrorlist/ |
-            grep '<option value=".*">.*</option>' |
-            awk -F'[<">]' '{ gsub(" ", "-", $5); print $3, $5 }'
+            awk -F'[<">]' '/<option value=".*">.*<\/option>/ { gsub(" ", "-", $5); print $3, $5 }'
         )
 }
 
@@ -71,8 +68,9 @@ get_locale() {
         --menu 'Select locale: ' \
         --output-fd 1 \
         0 0 0 \
+        en_US.UTF-8 UTF-8 \
         $(
-            cat /etc/locale.gen | awk -F'#' '/#\w/ { print $2 }'
+            awk -F'#' '/#\w/ { print $2 }' /etc/locale.gen
         )
 }
 
@@ -106,7 +104,6 @@ get_password() {
 
 enable_ntp() {
     timedatectl set-ntp true
-    echo [DEBUG]: network time protocol: =$(timedatectl show | grep '^NTP=' | cut -d'=' -f 2)= >> archer.log
 }
 
 
@@ -140,15 +137,6 @@ download_mirrorlist() {
     wget -qO /etc/pacman.d/mirrorlist "$api_query"
 
     sed -i '/^#.*Server /s/^#//' /etc/pacman.d/mirrorlist
-
-    cat /etc/pacman.d/mirrorlist | awk '/Server/ {print "[DEBUG]: mirror:", "="$3"="}' >> archer.log
-}
-
-configure_pacman() {
-    sed -i '/Color/s/^#//g' /etc/pacman.conf
-    sed -i '/CheckSpace/s/^#//g' /etc/pacman.conf
-    sed -i '/VerbosePkgLists/s/^#//g' /etc/pacman.conf
-    sed -i '/VerbosePkgLists/a ILoveCandy' /etc/pacman.conf
 }
 
 install_pacman_packages() {
@@ -180,9 +168,15 @@ install_pacman_packages() {
         xorg-xinit
         xorg-apps
         picom
+        wget
     )
 
     for package in ${packages[@]}; do echo [DEBUG]: package: =$package= >> archer.log; done
+
+    sed -i '/Color/s/^#//g' /etc/pacman.conf
+    sed -i '/CheckSpace/s/^#//g' /etc/pacman.conf
+    sed -i '/VerbosePkgLists/s/^#//g' /etc/pacman.conf
+    sed -i '/VerbosePkgLists/a ILoveCandy' /etc/pacman.conf
 
     pacstrap /mnt ${packages[@]}
 }
@@ -196,7 +190,7 @@ install_aur_packages() {
 
     for package in ${packages[@]}; do echo [DEBUG]: AUR package: =$package= >> archer.log; done
 
-    sed -i '/^root.*/a nobody ALL=(ALL) NOPASSWD: ALL/' /mnt/etc/sudoers
+    sed -i '/^root.*/a nobody ALL=(ALL) NOPASSWD: ALL' /mnt/etc/sudoers
 
     for package in ${packages[@]}; do
         arch-chroot /mnt /bin/bash <<< "cd /tmp && \
@@ -217,7 +211,6 @@ generate_fstab() {
     sed -i 's/relatime/noatime/g' /mnt/etc/fstab
 }
 
-#TODO: update this
 generate_locale() {
     arch-chroot /mnt /bin/bash <<< "sed -i '/^#$locale/s/^#//' /etc/locale.gen && \
         locale-gen > /dev/null 2>&1 && \
@@ -227,6 +220,20 @@ generate_locale() {
 set_timezone() {
     arch-chroot /mnt /bin/bash <<< "ln -sf /usr/share/zoneinfo/$timezone /etc/localtime && \
         hwclock --systohc"
+}
+
+configure_network() {
+    echo $hostname > /mnt/etc/hostname
+    echo "127.0.0.1  localhost" >> /mnt/etc/hosts
+    echo "::1        localhost" >> /mnt/etc/hosts
+    echo "127.0.1.1  $hostname.localdomain $hostname" >> /mnt/etc/hosts
+}
+
+configure_pacman() {
+    sed -i '/Color/s/^#//g' /mnt/etc/pacman.conf
+    sed -i '/CheckSpace/s/^#//g' /mnt/etc/pacman.conf
+    sed -i '/VerbosePkgLists/s/^#//g' /mnt/etc/pacman.conf
+    sed -i '/VerbosePkgLists/a ILoveCandy' /mnt/etc/pacman.conf
 }
 
 
@@ -261,23 +268,32 @@ setup() {
     echo [DEBUG]: username: =$username= >> archer.log
     password="$(get_password)"
     echo [DEBUG]: password: =$password= >> archer.log
+
     enable_ntp
+    echo [DEBUG]: network time protocol: =$(timedatectl show | grep '^NTP=' | cut -d'=' -f 2)= >> archer.log
 
     create_partitions
 
     download_mirrorlist
-
-    configure_pacman
+    awk '/Server/ {print "[DEBUG]: mirror:", "="$3"="}' /etc/pacman.d/mirrorlist >> archer.log
 
     install_pacman_packages
 
     install_aur_packages
 
     generate_fstab
+    echo [DEBUG]: fstab generated: =$([ -n "$(grep noatime /mnt/etc/fstab)" ] && echo yes || echo no)= >> archer.log
 
     generate_locale
 
+    #TODO: keymap
+
     set_timezone
+
+    configure_network
+
+    configure_pacman
+    echo [DEBUG]: pacman configured: =$([ -n "$(grep ILoveCandy /mnt/etc/pacman.conf)" ] && echo yes || echo no)= >> archer.log
 }
 
 setup
