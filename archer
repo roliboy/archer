@@ -196,15 +196,20 @@ install_aur_packages() {
 
     for package in ${packages[@]}; do echo [DEBUG]: AUR package: =$package= >> archer.log; done
 
+    sed -i '/^root.*/a nobody ALL=(ALL) NOPASSWD: ALL/' /mnt/etc/sudoers
+
     for package in ${packages[@]}; do
-        wget -P /mnt/home/$username https://aur.archlinux.org/cgit/aur.git/snapshot/$package.tar.gz
-        arch-chroot /mnt /bin/bash <<< "cd /home/$username && \
-            sudo -u $username tar xfvz $package.tar.gz && \
+        arch-chroot /mnt /bin/bash <<< "cd /tmp && \
+            wget https://aur.archlinux.org/cgit/aur.git/snapshot/$package.tar.gz
+            sudo -u nobody tar xfvz $package.tar.gz && \
             cd $package && \
-            sudo -u $username makepkg -risc --noconfirm"
-        rm /mnt/home/$username/$package.tar.gz
-        rm -rf /mnt/home/$username/$package
+            sudo -u nobody makepkg -risc --noconfirm && \
+            cd /tmp && \
+            rm $package.tar.gz && \
+            rm -rf $package"
     done
+
+    sed -i '/^nobody.*/d' /mnt/etc/sudoers
 }
 
 generate_fstab() {
@@ -214,9 +219,9 @@ generate_fstab() {
 
 #TODO: update this
 generate_locale() {
-    arch-chroot /mnt /bin/bash <<< "sed -i '/^#en_US\.UTF-8/s/^#//' /etc/locale.gen && \
+    arch-chroot /mnt /bin/bash <<< "sed -i '/^#$locale/s/^#//' /etc/locale.gen && \
         locale-gen > /dev/null 2>&1 && \
-        echo 'LANG=en_US.UTF-8' > /etc/locale.conf"
+        echo 'LANG=$locale' > /etc/locale.conf"
 }
 
 set_timezone() {
