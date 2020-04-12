@@ -236,7 +236,45 @@ configure_pacman() {
     sed -i '/VerbosePkgLists/a ILoveCandy' /mnt/etc/pacman.conf
 }
 
+configure_libinput() {
+    mkdir -p /mnt/etc/X11/xorg.conf.d
+    echo 'Section "InputClass"' > /mnt/etc/X11/xorg.conf.d/50-touchpad.conf
+    echo '  Identifier "tapping and natural scrolling"' >> /mnt/etc/X11/xorg.conf.d/50-touchpad.conf
+    echo '  MatchIsTouchpad "on"' >> /mnt/etc/X11/xorg.conf.d/50-touchpad.conf
+    echo '  MatchDriver "libinput"' >> /mnt/etc/X11/xorg.conf.d/50-touchpad.conf
+    echo '  Option "Tapping" "on"' >> /mnt/etc/X11/xorg.conf.d/50-touchpad.conf
+    echo '  Option "NaturalScrolling" "true"' >> /mnt/etc/X11/xorg.conf.d/50-touchpad.conf
+    echo 'EndSection' >> /mnt/etc/X11/xorg.conf.d/50-touchpad.conf
+}
 
+#TODO: modify master file
+configure_tlp() {
+    if [[ "$gpu_configuration" == optimus ]]; then
+        echo 'RUNTIME_PM_DRIVER_BLACKLIST="nouveau nvidia"' > /mnt/etc/tlp.d/10-driver-blacklist.conf
+    fi
+}
+
+configure_journald() {
+    sed -i 's/#SystemMaxUse.*/SystemMaxUse=50M/g' /mnt/etc/systemd/journald.conf
+}
+
+configure_coredump() {
+    sed -i 's/#Storage.*/Storage=none/g' /mnt/etc/systemd/coredump.conf
+}
+
+enable_systemd_services_chroot() {
+    arch-chroot /mnt /bin/bash <<< "systemctl enable NetworkManager.service > /dev/null 2>&1"
+
+    [ "$has_battery" = yes ] && arch-chroot /mnt /bin/bash <<< "systemctl enable tlp.service > /dev/null 2>&1"
+
+    [ "$has_battery" = yes ] && [ "$has_wireless" = yes ] && \
+        arch-chroot /mnt /bin/bash <<< "systemctl enable NetworkManager-dispatcher.service > /dev/null 2>&1 && \
+            systemctl mask systemd-rfkill.service > /dev/null 2>&1 && \
+            systemctl mask systemd-rfkill.socket > /dev/null 2>&1"
+
+    [ "$has_ssd" = yes ] && chroot "systemctl enable fstrim.timer > /dev/null 2>&1"
+    [ "$gpu_configuration" = optimus ] && chroot "systemctl enable bumblebeed.service > /dev/null 2>&1"
+}
 
 setup() {
     echo [LOG] > archer.log
@@ -294,6 +332,16 @@ setup() {
 
     configure_pacman
     echo [DEBUG]: pacman configured: =$([ -n "$(grep ILoveCandy /mnt/etc/pacman.conf)" ] && echo yes || echo no)= >> archer.log
+
+    configure_libinput
+
+    configure_tlp
+
+    configure_journald
+
+    configure_coredump
+
+    enable_services
 }
 
 setup
