@@ -27,52 +27,44 @@ set_dialogrc() {
     echo 'separate_widget = ""' >> .dialogrc
     echo 'tab_len = 0' >> .dialogrc
     echo 'visit_items = off' >> .dialogrc
-    echo 'use_shadow = off' >> .dialogrc
-    echo 'use_colors = on' >> .dialogrc
 
     echo 'screen_color = (cyan, black, on)' >> .dialogrc
     echo 'dialog_color = (cyan, black, off)' >> .dialogrc
     echo 'title_color = (cyan, black, off)' >> .dialogrc
-    echo 'border_color = (cyan, black, on)' >> .dialogrc
-    echo 'shadow_color = (black, black, off)' >> .dialogrc
+    echo 'border_color = (cyan, black, off)' >> .dialogrc
 
-    echo 'button_inactive_color = dialog_color' >> .dialogrc
-    echo 'button_key_inactive_color = dialog_color' >> .dialogrc
-    echo 'button_label_inactive_color = dialog_color' >> .dialogrc
+    echo 'button_inactive_color = (cyan, black, off)' >> .dialogrc
+    echo 'button_key_inactive_color = (cyan, black, off)' >> .dialogrc
+    echo 'button_label_inactive_color = (cyan, black, off)' >> .dialogrc
 
     echo 'button_active_color = (cyan, black, on)' >> .dialogrc
     echo 'button_key_active_color = (cyan, black, on)' >> .dialogrc
     echo 'button_label_active_color = (cyan, black, off)' >> .dialogrc
 
     echo 'tag_key_selected_color = (white, black, on)' >> .dialogrc
-    echo 'item_selected_color = tag_key_selected_color' >> .dialogrc
+    echo 'item_selected_color = (white, black, on)' >> .dialogrc
 
-    echo 'form_text_color = (yellow, green, on)' >> .dialogrc
-    echo 'form_item_readonly_color = (green, yellow, on)' >> .dialogrc
+    echo 'inputbox_color = (white, black, on)' >> .dialogrc
+    echo 'inputbox_border_color = (cyan, black, on)' >> .dialogrc
 
-    echo 'itemhelp_color = (white, blue, off)' >> .dialogrc
+    echo 'position_indicator_color = (cyan, black, on)' >> .dialogrc
 
-    echo 'inputbox_color = dialog_color' >> .dialogrc
-    echo 'inputbox_border_color = dialog_color' >> .dialogrc
-    echo 'searchbox_color = dialog_color' >> .dialogrc
-    echo 'searchbox_title_color = title_color' >> .dialogrc
-    echo 'searchbox_border_color = border_color' >> .dialogrc
-    echo 'position_indicator_color = title_color' >> .dialogrc
-    echo 'menubox_color = dialog_color' >> .dialogrc
-    echo 'menubox_border_color = border_color' >> .dialogrc
-    echo 'item_color = dialog_color' >> .dialogrc
-    echo 'tag_color = title_color' >> .dialogrc
-    echo 'tag_selected_color = button_label_active_color' >> .dialogrc
-    echo 'tag_key_color = button_key_inactive_color' >> .dialogrc
-    echo 'check_color = dialog_color' >> .dialogrc
-    echo 'check_selected_color = button_active_color' >> .dialogrc
-    echo 'uarrow_color = screen_color' >> .dialogrc
-    echo 'darrow_color = screen_color' >> .dialogrc
-    echo 'form_active_text_color = button_active_color' >> .dialogrc
-    echo 'gauge_color = title_color' >> .dialogrc
-    echo 'border2_color = dialog_color' >> .dialogrc
-    echo 'searchbox_border2_color = dialog_color' >> .dialogrc
-    echo 'menubox_border2_color = dialog_color' >> .dialogrc
+    echo 'menubox_color = (cyan, black, off)' >> .dialogrc
+    echo 'menubox_border_color = (cyan, black, off)' >> .dialogrc
+
+    echo 'item_color = (cyan, black, off)' >> .dialogrc
+    echo 'tag_color = (cyan, black, off)' >> .dialogrc
+
+    echo 'tag_selected_color = (white, black, on)' >> .dialogrc
+
+    echo 'tag_key_color = (cyan, black, off)' >> .dialogrc
+
+    echo 'uarrow_color = (cyan, black, on)' >> .dialogrc
+    echo 'darrow_color = (cyan, black, on)' >> .dialogrc
+
+    echo 'gauge_color = (cyan, black, off)' >> .dialogrc
+    echo 'border2_color = (cyan, black, off)' >> .dialogrc
+    echo 'menubox_border2_color = (cyan, black, off)' >> .dialogrc
 
     export DIALOGRC="$(pwd)/.dialogrc"
 }
@@ -246,7 +238,6 @@ install_pacman_packages() {
         xorg-xinit
         xorg-apps
         picom
-        wget
     )
 
     for package in ${packages[@]}; do echo [DEBUG]: package: =$package= >> archer.log; done
@@ -272,7 +263,7 @@ install_aur_packages() {
 
     for package in ${packages[@]}; do
         arch-chroot /mnt /bin/bash <<< "cd /tmp && \
-            wget https://aur.archlinux.org/cgit/aur.git/snapshot/$package.tar.gz
+            curl -sO https://aur.archlinux.org/cgit/aur.git/snapshot/$package.tar.gz
             sudo -u nobody tar xfvz $package.tar.gz && \
             cd $package && \
             sudo -u nobody makepkg -risc --noconfirm && \
@@ -360,7 +351,7 @@ configure_coredump() {
     sed -i 's/#Storage.*/Storage=none/g' /mnt/etc/systemd/coredump.conf
 }
 
-enable_systemd_services_chroot() {
+enable_services() {
     arch-chroot /mnt /bin/bash <<< "systemctl enable NetworkManager.service > /dev/null 2>&1"
 
     [ "$has_battery" = yes ] && arch-chroot /mnt /bin/bash <<< "systemctl enable tlp.service > /dev/null 2>&1"
@@ -449,6 +440,7 @@ setup() {
     install_bootloader
 
     #TODO: keymap
+    #TODO: NTP on chroot
 
     set_timezone
 
