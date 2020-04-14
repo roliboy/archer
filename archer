@@ -445,7 +445,7 @@ setup() {
     set_timezone
 
     configure_network
-
+    echo [DEBUG]: network configured: =$([ -n "$(grep $hostname /mnt/etc/hosts)"] && echo yes || echo no)= >> archer.log
     configure_pacman
     echo [DEBUG]: pacman configured: =$([ -n "$(grep ILoveCandy /mnt/etc/pacman.conf)" ] && echo yes || echo no)= >> archer.log
 
@@ -454,14 +454,15 @@ setup() {
     [ "$has_battery" = yes ] && configure_tlp
 
     configure_journald
-
+    echo [DEBUG]: journald configured: =$([ -n "$(grep '^SystemMaxUse' /mnt/etc/systemd/journald.conf)"] && echo yes || echo no)= >> archer.log
     configure_coredump
-
+    echo [DEBUG]: coredump configured: =$([ -n "$(grep '^Storage' /mnt/etc/systemd/coredump.conf)"] && echo yes || echo no)= >> archer.log
     enable_services
-
+    #systemctl status
     set_root_password
-
+    #sudo check
     create_user
+    echo [DEBUG]: user created: =$([ -n "$(grep $username <<< `arch-chroot /mnt /bin/bash <<< 'cut -d: -f1 /etc/passwd'`)" ] && echo yes || echo no)= >> archer.log
 }
 
 setup
