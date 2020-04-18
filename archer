@@ -183,12 +183,6 @@ get_password() {
 }
 
 
-
-enable_ntp() {
-    timedatectl set-ntp true
-}
-
-
 create_partitions() {
     for partition in $(parted -s $selected_drive print | awk '/^ / {print $1}' | tac); do
         umount -l ${selected_drive}$partition > /dev/null 2>&1
@@ -210,6 +204,9 @@ create_partitions() {
     mount ${selected_drive}1 /mnt/boot
 }
 
+enable_ntp() {
+    timedatectl set-ntp true
+}
 
 download_mirrorlist() {
     api_endpoint="https://www.archlinux.org/mirrorlist/?"
@@ -443,10 +440,11 @@ setup() {
     password="$(get_password)"
     echo [DEBUG]: password: =$password= >> archer.log
 
-    enable_ntp
-    echo [DEBUG]: network time protocol: =$(timedatectl show | grep '^NTP=' | cut -d'=' -f 2)= >> archer.log
 
     create_partitions
+
+    enable_ntp
+    echo [DEBUG]: network time protocol: =$(timedatectl show | grep '^NTP=' | cut -d'=' -f 2)= >> archer.log
 
     download_mirrorlist
     awk '/Server/ {print "[DEBUG]: mirror:", "="$3"="}' /etc/pacman.d/mirrorlist >> archer.log
@@ -454,14 +452,16 @@ setup() {
     install_pacman_packages
 
     install_aur_packages
+    echo [DEBUG]: aur packages installed: =$(arch-chroot /mnt /bin/bash <<< 'pacman -Qm | wc -l')= >> archer.log
 
     generate_fstab
     echo [DEBUG]: fstab generated: =$([ -n "$(grep noatime /mnt/etc/fstab)" ] && echo yes || echo no)= >> archer.log
 
     generate_locale
+    echo [DEBUG]: locale generated: =$([ -n "$(grep $locale /mnt/etc/locale.conf)" ] && echo yes || echo no)= >> archer.log
 
     set_keymap
-    echo [DEBUG]: bootloader installed: =$([ -n "$(grep $keymap /mnt/etc/vconsole.conf)"] && echo yes || echo no)= >> archer.log
+    echo [DEBUG]: keymap set: =$([ -n "$(grep $keymap /mnt/etc/vconsole.conf)"] && echo yes || echo no)= >> archer.log
 
     install_bootloader
     echo [DEBUG]: bootloader installed: =$([ -n "$(grep UUID /mnt/boot/loader/entries/arch.conf)"] && echo yes || echo no)= >> archer.log
@@ -476,8 +476,11 @@ setup() {
     echo [DEBUG]: pacman configured: =$([ -n "$(grep ILoveCandy /mnt/etc/pacman.conf)" ] && echo yes || echo no)= >> archer.log
 
     [ "$has_touchpad" = yes ] && configure_libinput
+    echo [DEBUG]: libinput configured: =$([ -n "$(grep InputClass /mnt/etc/X11/xorg.conf.d/50-touchpad.conf)"] && echo yes || echo no)= >> archer.log
 
     [ "$has_battery" = yes ] && configure_tlp
+    # TODO: update this after tlp config will be migrated to main file
+    echo [DEBUG]: tlp configured: =$([ -n "$(grep nvidia /mnt/etc/tlp.d/10-driver-blacklist.conf)"] && echo yes || echo no)= >> archer.log
 
     configure_journald
     echo [DEBUG]: journald configured: =$([ -n "$(grep '^SystemMaxUse' /mnt/etc/systemd/journald.conf)"] && echo yes || echo no)= >> archer.log
