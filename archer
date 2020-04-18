@@ -144,6 +144,18 @@ get_locale() {
         )
 }
 
+get_keymap() {
+    dialog --title 'Keymap' \
+        --menu 'Select keymap: ' \
+        --output-fd 1 \
+        0 0 0 \
+        en_US.UTF-8 UTF-8 \
+        $(
+            find /usr/share/kbd/keymaps/ -type f -name "*.map.gz" -printf "%f -\n" |
+            sort
+        )
+}
+
 get_timezone() {
     dialog --title 'Timezone' \
         --menu 'Select timezone: ' \
@@ -238,6 +250,10 @@ install_pacman_packages() {
         xorg-xinit
         xorg-apps
         picom
+
+        alacritty
+        xwallpaper
+        arc-gtk-theme
     )
 
     for package in ${packages[@]}; do echo [DEBUG]: package: =$package= >> archer.log; done
@@ -286,6 +302,10 @@ generate_locale() {
         echo 'LANG=$locale' > /etc/locale.conf"
 }
 
+set_keymap() {
+    echo "KEYMAP=$keymap" > /mnt/etc/vconsole.conf
+}
+
 install_bootloader() {
   arch-chroot /mnt /bin/bash <<< "bootctl --path=/boot install > /dev/null 2>&1"
   echo 'default arch-*' > /mnt/boot/loader/loader.conf
@@ -308,7 +328,8 @@ install_bootloader() {
 }
 
 set_timezone() {
-    arch-chroot /mnt /bin/bash <<< "ln -sf /usr/share/zoneinfo/$timezone /etc/localtime && \
+    arch-chroot /mnt /bin/bash <<< "timedatectl set-ntp true && \
+        ln -sf /usr/share/zoneinfo/$timezone /etc/localtime && \
         hwclock --systohc"
 }
 
@@ -411,6 +432,8 @@ setup() {
     echo [DEBUG]: mirrorlist country: =$mirrorlist_country= >> archer.log
     locale="$(get_locale)"
     echo [DEBUG]: locale: =$locale= >> archer.log
+    keymap="$(get_keymap)"
+    echo [DEBUG]: keymap: =$keymap= >> archer.log
     timezone="$(get_timezone)"
     echo [DEBUG]: timezone: =$timezone= >> archer.log
     hostname="$(get_hostname)"
@@ -437,12 +460,14 @@ setup() {
 
     generate_locale
 
-    install_bootloader
+    set_keymap
+    echo [DEBUG]: bootloader installed: =$([ -n "$(grep $keymap /mnt/etc/vconsole.conf)"] && echo yes || echo no)= >> archer.log
 
-    #TODO: keymap
-    #TODO: NTP on chroot
+    install_bootloader
+    echo [DEBUG]: bootloader installed: =$([ -n "$(grep UUID /mnt/boot/loader/entries/arch.conf)"] && echo yes || echo no)= >> archer.log
 
     set_timezone
+    echo [DEBUG]: timezone configured: =$([ -n "$(ls -la /mnt/etc/zoneinfo | grep $timezone)"] && echo yes || echo no)= >> archer.log
 
     configure_network
     echo [DEBUG]: network configured: =$([ -n "$(grep $hostname /mnt/etc/hosts)"] && echo yes || echo no)= >> archer.log
