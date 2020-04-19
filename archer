@@ -149,7 +149,6 @@ get_keymap() {
         --menu 'Select keymap: ' \
         --output-fd 1 \
         0 0 0 \
-        en_US.UTF-8 UTF-8 \
         $(
             find /usr/share/kbd/keymaps/ -type f -name "*.map.gz" -printf "%f -\n" |
             sort
@@ -461,32 +460,32 @@ setup() {
     echo [DEBUG]: locale generated: =$([ -n "$(grep $locale /mnt/etc/locale.conf)" ] && echo yes || echo no)= >> archer.log
 
     set_keymap
-    echo [DEBUG]: keymap set: =$([ -n "$(grep $keymap /mnt/etc/vconsole.conf)"] && echo yes || echo no)= >> archer.log
+    echo [DEBUG]: keymap set: =$([ -n "$(grep $keymap /mnt/etc/vconsole.conf)" ] && echo yes || echo no)= >> archer.log
 
     install_bootloader
-    echo [DEBUG]: bootloader installed: =$([ -n "$(grep UUID /mnt/boot/loader/entries/arch.conf)"] && echo yes || echo no)= >> archer.log
+    echo [DEBUG]: bootloader installed: =$([ -n "$(grep UUID /mnt/boot/loader/entries/arch.conf)" ] && echo yes || echo no)= >> archer.log
 
     set_timezone
-    echo [DEBUG]: timezone configured: =$([ -n "$(ls -la /mnt/etc/zoneinfo | grep $timezone)"] && echo yes || echo no)= >> archer.log
+    echo [DEBUG]: timezone configured: =$([ -n "$(ls -la /mnt/etc/zoneinfo | grep $timezone)" ] && echo yes || echo no)= >> archer.log
 
     configure_network
-    echo [DEBUG]: network configured: =$([ -n "$(grep $hostname /mnt/etc/hosts)"] && echo yes || echo no)= >> archer.log
+    echo [DEBUG]: network configured: =$([ -n "$(grep $hostname /mnt/etc/hosts)" ] && echo yes || echo no)= >> archer.log
 
     configure_pacman
     echo [DEBUG]: pacman configured: =$([ -n "$(grep ILoveCandy /mnt/etc/pacman.conf)" ] && echo yes || echo no)= >> archer.log
 
     [ "$has_touchpad" = yes ] && configure_libinput
-    echo [DEBUG]: libinput configured: =$([ -n "$(grep InputClass /mnt/etc/X11/xorg.conf.d/50-touchpad.conf)"] && echo yes || echo no)= >> archer.log
+    echo [DEBUG]: libinput configured: =$([ -n "$(grep InputClass /mnt/etc/X11/xorg.conf.d/50-touchpad.conf)" ] && echo yes || echo no)= >> archer.log
 
     [ "$has_battery" = yes ] && configure_tlp
     # TODO: update this after tlp config will be migrated to main file
-    echo [DEBUG]: tlp configured: =$([ -n "$(grep nvidia /mnt/etc/tlp.d/10-driver-blacklist.conf)"] && echo yes || echo no)= >> archer.log
+    echo [DEBUG]: tlp configured: =$([ -n "$(grep nvidia /mnt/etc/tlp.d/10-driver-blacklist.conf)" ] && echo yes || echo no)= >> archer.log
 
     configure_journald
-    echo [DEBUG]: journald configured: =$([ -n "$(grep '^SystemMaxUse' /mnt/etc/systemd/journald.conf)"] && echo yes || echo no)= >> archer.log
+    echo [DEBUG]: journald configured: =$([ -n "$(grep '^SystemMaxUse' /mnt/etc/systemd/journald.conf)" ] && echo yes || echo no)= >> archer.log
 
     configure_coredump
-    echo [DEBUG]: coredump configured: =$([ -n "$(grep '^Storage' /mnt/etc/systemd/coredump.conf)"] && echo yes || echo no)= >> archer.log
+    echo [DEBUG]: coredump configured: =$([ -n "$(grep '^Storage' /mnt/etc/systemd/coredump.conf)" ] && echo yes || echo no)= >> archer.log
 
     enable_services
     #systemctl status
