@@ -378,8 +378,8 @@ enable_services() {
             systemctl mask systemd-rfkill.service > /dev/null 2>&1 && \
             systemctl mask systemd-rfkill.socket > /dev/null 2>&1"
 
-    [ "$has_ssd" = yes ] && chroot "systemctl enable fstrim.timer > /dev/null 2>&1"
-    [ "$gpu_configuration" = optimus ] && chroot "systemctl enable bumblebeed.service > /dev/null 2>&1"
+    [ "$has_ssd" = yes ] && arch-chroot /mnt /bin/bash <<< "systemctl enable fstrim.timer > /dev/null 2>&1"
+    [ "$gpu_configuration" = optimus ] && arch-chroot /mnt /bin/bash <<< "systemctl enable bumblebeed.service > /dev/null 2>&1"
 }
 
 set_root_password() {
@@ -394,7 +394,7 @@ create_user() {
 
         sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^# //' /mnt/etc/sudoers
         [ "$gpu_configuration" = optimus ] && \
-            arch-chroot /mnt /bin/bash <<< "gpasswd -a $username bumblebee"
+            arch-chroot /mnt /bin/bash <<< "gpasswd -a $username bumblebee > /dev/null"
 }
 
 #TODO: progress bar
@@ -466,7 +466,7 @@ setup() {
     echo [DEBUG]: bootloader installed: =$([ -n "$(grep UUID /mnt/boot/loader/entries/arch.conf)" ] && echo yes || echo no)= >> archer.log
 
     set_timezone
-    echo [DEBUG]: timezone configured: =$([ -n "$(ls -la /mnt/etc/zoneinfo | grep $timezone)" ] && echo yes || echo no)= >> archer.log
+    echo [DEBUG]: timezone configured: =$([ -n "$(ls -la /mnt/etc/localtime | grep $timezone)" ] && echo yes || echo no)= >> archer.log
 
     configure_network
     echo [DEBUG]: network configured: =$([ -n "$(grep $hostname /mnt/etc/hosts)" ] && echo yes || echo no)= >> archer.log
