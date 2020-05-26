@@ -239,6 +239,7 @@ install_pacman_packages() {
         $([ "$has_battery" = yes ] && echo tlp)
         $([ "$has_battery" = yes ] && [ "$has_wireless" = yes ] && echo tlp-rdw)
 
+	acpi
         #TODO: condition for acpilight
         acpilight
 
@@ -248,7 +249,10 @@ install_pacman_packages() {
         picom
 
         alacritty
+    	wget
+    	htop
         xwallpaper
+    	alsa-utils
         arc-gtk-theme
     )
 
@@ -392,9 +396,15 @@ create_user() {
         yes $password | passwd $username > /dev/null 2>&1 && \
         chown -R $username:$username /home/$username"
 
-        sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^# //' /mnt/etc/sudoers
-        [ "$gpu_configuration" = optimus ] && \
-            arch-chroot /mnt /bin/bash <<< "gpasswd -a $username bumblebee > /dev/null"
+    mkdir /mnt/etc/systemd/getty@tty1.service.d
+
+    echo '[Service]' > /mnt/etc/systemd/system/getty@tty1.service.d/override.conf
+    echo 'ExecStart=' > /mnt/etc/systemd/system/getty@tty1.service.d/override.conf
+    echo "ExecStart=-/usr/bin/agetty --autologin $username --noclear %I \$TERM" > /mnt/etc/system/systemd/getty@tty1.service.d/override.conf
+
+    sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^# //' /mnt/etc/sudoers
+    [ "$gpu_configuration" = optimus ] && \
+        arch-chroot /mnt /bin/bash <<< "gpasswd -a $username bumblebee > /dev/null"
 }
 
 #TODO: progress bar
