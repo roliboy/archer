@@ -59,11 +59,14 @@ detect_wireless() {
     [ -n "$(lspci | grep -i network | grep -i 'wireless\|WLAN\|wifi\|802.11')" ] && echo yes || echo no
 }
 
-# TODO: detect bluetooth
-
-detect_touchpad() {
-    [ -n "$(grep -i touchpad /proc/bus/input/devices)" ] && echo yes || echo no
+# experimental
+detect_bluetooth() {
+    [ -n "$(dmesg | grep -i bluetooth)" ] && echo yes || echo no
 }
+
+# detect_touchpad() {
+#     [ -n "$(grep -i touchpad /proc/bus/input/devices)" ] && echo yes || echo no
+# }
 
 detect_ssd() {
     [ -n "$(grep 0 /sys/block/*/queue/rotational)" ] && echo yes || echo no
@@ -104,16 +107,16 @@ get_locale() {
         )
 }
 
-get_keymap() {
-    whiptail --title 'Keymap' \
-        --menu 'Select keymap: ' \
-        --output-fd 1 \
-        0 0 0 \
-        $(
-            find /usr/share/kbd/keymaps/ -type f -name "*.map.gz" -printf "%f -\n" |
-            sort
-        )
-}
+# get_keymap() {
+#     whiptail --title 'Keymap' \
+#         --menu 'Select keymap: ' \
+#         --output-fd 1 \
+#         0 0 0 \
+#         $(
+#             find /usr/share/kbd/keymaps/ -type f -name "*.map.gz" -printf "%f -\n" |
+#             sort
+#         )
+# }
 
 get_timezone() {
     whiptail --title 'Timezone' \
@@ -252,9 +255,9 @@ generate_locale() {
     #TODO ^V
 }
 
-set_keymap() {
-    echo "KEYMAP=$keymap" > /mnt/etc/vconsole.conf
-}
+# set_keymap() {
+#     echo "KEYMAP=$keymap" > /mnt/etc/vconsole.conf
+# }
 
 install_bootloader() {
   arch-chroot /mnt /bin/bash <<< "bootctl --path=/boot install > /dev/null 2>&1"
@@ -382,47 +385,30 @@ setup() {
     echo "[DEBUG]: battery: =$has_battery=" >> archer.log
     has_wireless="$(detect_wireless)"
     echo "[DEBUG]: wireless: =$has_wireless=" >> archer.log
-    has_touchpad="$(detect_touchpad)"
-    echo "[DEBUG]: touchpad: =$has_touchpad=" >> archer.log
+    has_bluetooth="$(detect_bluetooth)"
+    echo "[DEBUG]: bluetooth: =has_bluetooth=" >> archer.log
+#     has_touchpad="$(detect_touchpad)"
+#     echo "[DEBUG]: touchpad: =$has_touchpad=" >> archer.log
     has_ssd="$(detect_ssd)"
     echo "[DEBUG]: ssd: =$has_ssd=" >> archer.log
 
-    if [ "$preset" = roliboy ]; then
-        selected_drive="$(get_drive)"
-        echo "[DEBUG]: selected drve: =$selected_drive=" >> archer.log
-        mirrorlist_country="RO"
-        echo "[DEBUG]: mirrorlist country: =$mirrorlist_country=" >> archer.log
-        locale="en_US.UTF-8"
-        echo "[DEBUG]: locale: =$locale=" >> archer.log
-        keymap="us.map.gz"
-        echo "[DEBUG]: keymap: =$keymap=" >> archer.log
-        timezone="Europe/Bucharest"
-        echo "[DEBUG]: timezone: =$timezone=" >> archer.log
-        hostname="arch"
-        echo "[DEBUG]: hostname: =$hostname=" >> archer.log
-        username="roliboy"
-        echo "[DEBUG]: username: =$username=" >> archer.log
-        password="$(get_password)"
-        echo "[DEBUG]: password: =$password=" >> archer.log
-    else
-        selected_drive="$(get_drive)"
-        echo "[DEBUG]: selected drve: =$selected_drive=" >> archer.log
-        mirrorlist_country="$(get_mirrorlist_country)"
-        echo "[DEBUG]: mirrorlist country: =$mirrorlist_country=" >> archer.log
-        locale="$(get_locale)"
-        echo "[DEBUG]: locale: =$locale=" >> archer.log
-        keymap="$(get_keymap)"
-        echo "[DEBUG]: keymap: =$keymap=" >> archer.log
-        timezone="$(get_timezone)"
-        echo "[DEBUG]: timezone: =$timezone=" >> archer.log
-        hostname="$(get_hostname)"
-        echo "[DEBUG]: hostname: =$hostname=" >> archer.log
-        username="$(get_username)"
-        echo "[DEBUG]: username: =$username=" >> archer.log
-        password="$(get_password)"
-        echo "[DEBUG]: password: =$password=" >> archer.log
-    fi
 
+    selected_drive="$(get_drive)"
+    echo "[DEBUG]: selected drve: =$selected_drive=" >> archer.log
+    mirrorlist_country="$(get_mirrorlist_country)"
+    echo "[DEBUG]: mirrorlist country: =$mirrorlist_country=" >> archer.log
+    locale="$(get_locale)"
+    echo "[DEBUG]: locale: =$locale=" >> archer.log
+#     keymap="$(get_keymap)"
+#     echo "[DEBUG]: keymap: =$keymap=" >> archer.log
+    timezone="$(get_timezone)"
+    echo "[DEBUG]: timezone: =$timezone=" >> archer.log
+    hostname="$(get_hostname)"
+    echo "[DEBUG]: hostname: =$hostname=" >> archer.log
+    username="$(get_username)"
+    echo "[DEBUG]: username: =$username=" >> archer.log
+    password="$(get_password)"
+    echo "[DEBUG]: password: =$password=" >> archer.log
 
     create_partitions
 
@@ -443,8 +429,8 @@ setup() {
     generate_locale
     echo "[DEBUG]: locale generated: =$([ -n "$(grep $locale /mnt/etc/locale.conf)" ] && echo yes || echo no)=" >> archer.log
 
-    set_keymap
-    echo "[DEBUG]: keymap set: =$([ -n "$(grep $keymap /mnt/etc/vconsole.conf)" ] && echo yes || echo no)=" >> archer.log
+#     set_keymap
+#     echo "[DEBUG]: keymap set: =$([ -n "$(grep $keymap /mnt/etc/vconsole.conf)" ] && echo yes || echo no)=" >> archer.log
 
     install_bootloader
     echo "[DEBUG]: bootloader installed: =$([ -n "$(grep UUID /mnt/boot/loader/entries/arch.conf)" ] && echo yes || echo no)=" >> archer.log
@@ -458,8 +444,8 @@ setup() {
     configure_pacman
     echo "[DEBUG]: pacman configured: =$([ -n "$(grep ILoveCandy /mnt/etc/pacman.conf)" ] && echo yes || echo no)=" >> archer.log
 
-    [ "$has_touchpad" = yes ] && configure_libinput
-    echo "[DEBUG]: libinput configured: =$([ -n "$(grep InputClass /mnt/etc/X11/xorg.conf.d/50-touchpad.conf)" ] && echo yes || echo no)=" >> archer.log
+#     [ "$has_touchpad" = yes ] && configure_libinput
+#     echo "[DEBUG]: libinput configured: =$([ -n "$(grep InputClass /mnt/etc/X11/xorg.conf.d/50-touchpad.conf)" ] && echo yes || echo no)=" >> archer.log
 
     [ "$has_battery" = yes ] && configure_tlp
     # TODO: update this after tlp config will be migrated to main file
