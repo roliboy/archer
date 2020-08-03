@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set_colorscheme() {
+set_terminal_colors() {
     setterm -blank 0 -powersave off
     echo -ne "\e]P02e3436" #black
     echo -ne "\e]P8555753" #darkgrey
@@ -21,52 +21,10 @@ set_colorscheme() {
     clear #for background artifacting
 }
 
-
-set_dialogrc() {
-    echo 'aspect = 0' > .dialogrc
-    echo 'separate_widget = ""' >> .dialogrc
-    echo 'tab_len = 0' >> .dialogrc
-    echo 'visit_items = off' >> .dialogrc
-
-    echo 'screen_color = (cyan, black, on)' >> .dialogrc
-    echo 'dialog_color = (cyan, black, off)' >> .dialogrc
-    echo 'title_color = (cyan, black, off)' >> .dialogrc
-    echo 'border_color = (cyan, black, off)' >> .dialogrc
-
-    echo 'button_inactive_color = (cyan, black, off)' >> .dialogrc
-    echo 'button_key_inactive_color = (cyan, black, off)' >> .dialogrc
-    echo 'button_label_inactive_color = (cyan, black, off)' >> .dialogrc
-
-    echo 'button_active_color = (cyan, black, on)' >> .dialogrc
-    echo 'button_key_active_color = (cyan, black, on)' >> .dialogrc
-    echo 'button_label_active_color = (cyan, black, off)' >> .dialogrc
-
-    echo 'tag_key_selected_color = (white, black, on)' >> .dialogrc
-    echo 'item_selected_color = (white, black, on)' >> .dialogrc
-
-    echo 'inputbox_color = (white, black, on)' >> .dialogrc
-    echo 'inputbox_border_color = (cyan, black, on)' >> .dialogrc
-
-    echo 'position_indicator_color = (cyan, black, on)' >> .dialogrc
-
-    echo 'menubox_color = (cyan, black, off)' >> .dialogrc
-    echo 'menubox_border_color = (cyan, black, off)' >> .dialogrc
-
-    echo 'item_color = (cyan, black, off)' >> .dialogrc
-    echo 'tag_color = (cyan, black, off)' >> .dialogrc
-
-    echo 'tag_selected_color = (white, black, on)' >> .dialogrc
-
-    echo 'tag_key_color = (cyan, black, off)' >> .dialogrc
-
-    echo 'uarrow_color = (cyan, black, on)' >> .dialogrc
-    echo 'darrow_color = (cyan, black, on)' >> .dialogrc
-
-    echo 'gauge_color = (cyan, black, off)' >> .dialogrc
-    echo 'border2_color = (cyan, black, off)' >> .dialogrc
-    echo 'menubox_border2_color = (cyan, black, off)' >> .dialogrc
-
-    export DIALOGRC="$(pwd)/.dialogrc"
+set_newt_colors() {
+    export NEWT_COLORS='
+        root=,black
+    '
 }
 
 
@@ -101,6 +59,8 @@ detect_wireless() {
     [ -n "$(lspci | grep -i network | grep -i 'wireless\|WLAN\|wifi\|802.11')" ] && echo yes || echo no
 }
 
+# TODO: detect bluetooth
+
 detect_touchpad() {
     [ -n "$(grep -i touchpad /proc/bus/input/devices)" ] && echo yes || echo no
 }
@@ -112,7 +72,7 @@ detect_ssd() {
 
 
 get_drive() {
-    dialog --title 'Target drive' \
+    whiptail --title 'Target drive' \
         --menu 'Select drive:' \
         --output-fd 1 \
         0 0 0 \
@@ -123,7 +83,7 @@ get_drive() {
 }
 
 get_mirrorlist_country() {
-    dialog --title 'Mirrorlist' \
+    whiptail --title 'Mirrorlist' \
         --menu 'Select country: ' \
         --output-fd 1 \
         0 0 0 \
@@ -134,7 +94,7 @@ get_mirrorlist_country() {
 }
 
 get_locale() {
-    dialog --title 'Locale' \
+    whiptail --title 'Locale' \
         --menu 'Select locale: ' \
         --output-fd 1 \
         0 0 0 \
@@ -145,7 +105,7 @@ get_locale() {
 }
 
 get_keymap() {
-    dialog --title 'Keymap' \
+    whiptail --title 'Keymap' \
         --menu 'Select keymap: ' \
         --output-fd 1 \
         0 0 0 \
@@ -156,7 +116,7 @@ get_keymap() {
 }
 
 get_timezone() {
-    dialog --title 'Timezone' \
+    whiptail --title 'Timezone' \
         --menu 'Select timezone: ' \
         --output-fd 1 \
         0 0 0 \
@@ -170,15 +130,15 @@ get_timezone() {
 }
 
 get_hostname() {
-    dialog --title 'Hostname' --inputbox "Enter hostname: " --output-fd 1 0 0
+    whiptail --title 'Hostname' --inputbox "Enter hostname: " --output-fd 1 0 0
 }
 
 get_username() {
-    dialog --title 'Username' --inputbox "Enter username: " --output-fd 1 0 0
+    whiptail --title 'Username' --inputbox "Enter username: " --output-fd 1 0 0
 }
 
 get_password() {
-    dialog --title 'Password' --insecure --passwordbox "Enter password: " --output-fd 1 0 0
+    whiptail --title 'Password' --insecure --passwordbox "Enter password: " --output-fd 1 0 0
 }
 
 
@@ -225,36 +185,25 @@ install_pacman_packages() {
         linux-firmware
         $([ "$cpu_vendor" = intel ] && echo intel-ucode)
         $([ "$cpu_vendor" = amd ] && echo amd-ucode)
-        networkmanager
+        networkmanager #dependency of plasma
 
         $([ "$gpu_configuration" = nvidia ] && echo nvidia)
 
-        #TODO: change bumblebee to xrun for optimus support
         $([ "$gpu_configuration" = optimus ] && echo nvidia)
-        $([ "$gpu_configuration" = optimus ] && echo mesa)
         $([ "$gpu_configuration" = optimus ] && echo bumblebee)
         $([ "$gpu_configuration" = optimus ] && echo bbswitch)
+#         primus for backend?
 
-        #TODO: advanced tlp config
         $([ "$has_battery" = yes ] && echo tlp)
         $([ "$has_battery" = yes ] && [ "$has_wireless" = yes ] && echo tlp-rdw)
+        
+#         bluetooth
+#         pulseaudio-bluez
 
-        acpi
-        #TODO: condition for acpilight
-        acpilight
-
-        xorg-server
-        xorg-xinit
-        xorg-apps
-        picom
-
-        alacritty
-    	wget
-    	htop
-        xwallpaper
-        qutebrowser
-    	alsa-utils
-        arc-gtk-theme
+        xorg
+        plasma
+        konsole
+        dolphin
     )
 
     for package in ${packages[@]}; do echo [DEBUG]: package: =$package= >> archer.log; done
@@ -270,7 +219,7 @@ install_pacman_packages() {
 install_aur_packages() {
     local packages=(
         nerd-fonts-fira-code
-        drive-bin
+        brave-bin
     )
 
     for package in ${packages[@]}; do echo [DEBUG]: AUR package: =$package= >> archer.log; done
@@ -300,6 +249,7 @@ generate_locale() {
     arch-chroot /mnt /bin/bash <<< "sed -i '/^#$locale/s/^#//' /etc/locale.gen && \
         locale-gen > /dev/null 2>&1 && \
         echo 'LANG=$locale' > /etc/locale.conf"
+    #TODO ^V
 }
 
 set_keymap() {
@@ -346,17 +296,17 @@ configure_pacman() {
     sed -i '/VerbosePkgLists/s/^#//g' /mnt/etc/pacman.conf
     sed -i '/VerbosePkgLists/a ILoveCandy' /mnt/etc/pacman.conf
 }
-
-configure_libinput() {
-    mkdir -p /mnt/etc/X11/xorg.conf.d
-    echo 'Section "InputClass"' > /mnt/etc/X11/xorg.conf.d/50-touchpad.conf
-    echo '  Identifier "tapping and natural scrolling"' >> /mnt/etc/X11/xorg.conf.d/50-touchpad.conf
-    echo '  MatchIsTouchpad "on"' >> /mnt/etc/X11/xorg.conf.d/50-touchpad.conf
-    echo '  MatchDriver "libinput"' >> /mnt/etc/X11/xorg.conf.d/50-touchpad.conf
-    echo '  Option "Tapping" "on"' >> /mnt/etc/X11/xorg.conf.d/50-touchpad.conf
-    echo '  Option "NaturalScrolling" "true"' >> /mnt/etc/X11/xorg.conf.d/50-touchpad.conf
-    echo 'EndSection' >> /mnt/etc/X11/xorg.conf.d/50-touchpad.conf
-}
+# 
+# configure_libinput() {
+#     mkdir -p /mnt/etc/X11/xorg.conf.d
+#     echo 'Section "InputClass"' > /mnt/etc/X11/xorg.conf.d/50-touchpad.conf
+#     echo '  Identifier "tapping and natural scrolling"' >> /mnt/etc/X11/xorg.conf.d/50-touchpad.conf
+#     echo '  MatchIsTouchpad "on"' >> /mnt/etc/X11/xorg.conf.d/50-touchpad.conf
+#     echo '  MatchDriver "libinput"' >> /mnt/etc/X11/xorg.conf.d/50-touchpad.conf
+#     echo '  Option "Tapping" "on"' >> /mnt/etc/X11/xorg.conf.d/50-touchpad.conf
+#     echo '  Option "NaturalScrolling" "true"' >> /mnt/etc/X11/xorg.conf.d/50-touchpad.conf
+#     echo 'EndSection' >> /mnt/etc/X11/xorg.conf.d/50-touchpad.conf
+# }
 
 #TODO: modify master file
 configure_tlp() {
@@ -384,6 +334,8 @@ enable_services() {
 
     [ "$has_ssd" = yes ] && arch-chroot /mnt /bin/bash <<< "systemctl enable fstrim.timer > /dev/null 2>&1"
     [ "$gpu_configuration" = optimus ] && arch-chroot /mnt /bin/bash <<< "systemctl enable bumblebeed.service > /dev/null 2>&1"
+#       enable sddm
+#       bluetooth
 }
 
 set_root_password() {
@@ -412,9 +364,9 @@ create_user() {
 setup() {
     echo "[LOG]" > archer.log
 
-    set_colorscheme
+    set_terminal_colors
 
-    set_dialogrc
+    set_newt_colors
 
     boot_mode="$(detect_boot_mode)"
     echo "[DEBUG]: boot mode: =$boot_mode=" >> archer.log
