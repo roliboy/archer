@@ -171,7 +171,7 @@ get_timezone() {
                 done
             done
         ) \
-        3>&1 1>&2 2>&3 \
+        3>&1 1>&2 2>&3
 }
 
 get_hostname() {
@@ -411,15 +411,14 @@ create_user() {
     [ "$gpu_configuration" = optimus ] && \
         arch-chroot /mnt /bin/bash <<< "gpasswd -a $username bumblebee > /dev/null"
         
-    echo "[DEBUG]: user created: ->$([ -n "$(grep $username <<< `arch-chroot /mnt /bin/bash <<< 'cut -d: -f1 /etc/passwd'`)" ] && echo yes || echo no)<-" >> archer.log
+    # echo "[DEBUG]: user created: ->$([ -n \"$(grep $username <<< `arch-chroot /mnt /bin/bash <<< 'cut -d: -f1 /etc/passwd'`)\" ] && echo yes || echo no)<-" >> archer.log
 }
 
 #TODO: mirror ranking
 setup() {
     echo "[LOG]" > archer.log
 
-    set_terminal_colors"$has_battery" = yes
-
+    set_terminal_colors
     set_newt_colors
 
     boot_mode="$(detect_boot_mode)"
@@ -494,11 +493,11 @@ setup() {
         create_user
     )
     
+
     for step in ${!execution_order[@]}; do
-        whiptail --gauge "${description[${execution_order[$step]}]}" <<< "$(expr $step \* 100 / ${#execution_order[@]})" 
-        
+        echo -e "XXX\n$(expr $step \* 100 / ${#execution_order[@]})\n${description[${execution_order[$step]}]}\nXXX"
         ${execution_order[$step]}
-    done
+    done | whiptail --title "Progress" --gauge "Initializing" 0 0 0
     
     whiptail --title 'Show log' --yesno "Show installation log?" 0 0 3>&1 1>&2 2>&3
     
