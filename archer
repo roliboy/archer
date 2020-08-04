@@ -25,6 +25,62 @@ set_newt_colors() {
     export NEWT_COLORS='
         root=,black
     '
+    
+# NEWT_COLORS_0='
+#     root=,blue
+# '
+# NEWT_COLORS_1='
+#     root=,blue
+#     checkbox=,blue
+#     entry=,blue
+#     label=blue,
+#     actlistbox=,blue
+#     helpline=,blue
+#     roottext=,blue
+#     emptyscale=blue
+#     disabledentry=blue,
+# '
+# NEWT_COLORS_2='
+#     root=green,black
+#     border=green,black
+#     title=green,black
+#     roottext=white,black
+#     window=green,black
+#     textbox=white,black
+#     button=black,green
+#     compactbutton=white,black
+#     listbox=white,black
+#     actlistbox=black,white
+#     actsellistbox=black,green
+#     checkbox=green,black
+#     actcheckbox=black,green
+# '
+# NEWT_COLORS_3='
+#     root=white,black
+#     border=black,lightgray
+#     window=lightgray,lightgray
+#     shadow=black,gray
+#     title=black,lightgray
+#     button=black,cyan
+#     actbutton=white,cyan
+#     compactbutton=black,lightgray
+#     checkbox=black,lightgray
+#     actcheckbox=lightgray,cyan
+#     entry=black,lightgray
+#     disentry=gray,lightgray
+#     label=black,lightgray
+#     listbox=black,lightgray
+#     actlistbox=black,cyan
+#     sellistbox=lightgray,black
+#     actsellistbox=lightgray,black
+#     textbox=black,lightgray
+#     acttextbox=black,cyan
+#     emptyscale=,gray
+#     fullscale=,cyan
+#     helpline=white,black
+#     roottext=lightgrey,black
+# '
+
 }
 
 
@@ -61,12 +117,9 @@ detect_wireless() {
 
 # experimental
 detect_bluetooth() {
+    [ -n "$(lsusb | grep -i bluetooth)" ] && echo yes && return
     [ -n "$(dmesg | grep -i bluetooth)" ] && echo yes || echo no
 }
-
-# detect_touchpad() {
-#     [ -n "$(grep -i touchpad /proc/bus/input/devices)" ] && echo yes || echo no
-# }
 
 detect_ssd() {
     [ -n "$(grep 0 /sys/block/*/queue/rotational)" ] && echo yes || echo no
@@ -77,71 +130,60 @@ detect_ssd() {
 get_drive() {
     whiptail --title 'Target drive' \
         --menu 'Select drive:' \
-        --output-fd 1 \
         0 0 0 \
         $(
             lsblk -lno NAME,SIZE,TYPE |
             awk '/disk/ { print "/dev/"$1, $2 }'
-        )
+        ) \
+        3>&1 1>&2 2>&3
 }
 
 get_mirrorlist_country() {
     whiptail --title 'Mirrorlist' \
         --menu 'Select country: ' \
-        --output-fd 1 \
         0 0 0 \
         $(
             curl -s https://www.archlinux.org/mirrorlist/ |
             awk -F'[<">]' '/<option value=".*">.*<\/option>/ { gsub(" ", "-", $5); print $3, $5 }'
-        )
+        ) \
+        3>&1 1>&2 2>&3
 }
 
 get_locale() {
     whiptail --title 'Locale' \
         --menu 'Select locale: ' \
-        --output-fd 1 \
         0 0 0 \
         en_US.UTF-8 UTF-8 \
         $(
             awk -F'#' '/#\w/ { print $2 }' /etc/locale.gen
-        )
+        ) \
+        3>&1 1>&2 2>&3
 }
-
-# get_keymap() {
-#     whiptail --title 'Keymap' \
-#         --menu 'Select keymap: ' \
-#         --output-fd 1 \
-#         0 0 0 \
-#         $(
-#             find /usr/share/kbd/keymaps/ -type f -name "*.map.gz" -printf "%f -\n" |
-#             sort
-#         )
-# }
 
 get_timezone() {
     whiptail --title 'Timezone' \
         --menu 'Select timezone: ' \
-        --output-fd 1 \
         0 0 0 \
         $(
             for zone in $(ls -F /usr/share/zoneinfo | grep \/$); do
                 for region in $(ls /usr/share/zoneinfo/$zone); do
-                    echo $zone$region '-';
-                done;
-            done;
-        )
+                    echo $zone$region '-'
+                done
+            done
+        ) \
+        3>&1 1>&2 2>&3 \
 }
 
 get_hostname() {
-    whiptail --title 'Hostname' --inputbox "Enter hostname: " --output-fd 1 0 0
+    whiptail --title 'Hostname' --inputbox "Enter hostname: " 0 0 3>&1 1>&2 2>&3
 }
 
 get_username() {
-    whiptail --title 'Username' --inputbox "Enter username: " --output-fd 1 0 0
+    whiptail --title 'Username' --inputbox "Enter username: " 0 0 3>&1 1>&2 2>&3
 }
 
 get_password() {
-    whiptail --title 'Password' --insecure --passwordbox "Enter password: " --output-fd 1 0 0
+    whiptail --title 'Password' --passwordbox "Enter password: " 0 0 3>&1 1>&2 2>&3
 }
 
 
@@ -149,7 +191,8 @@ create_partitions() {
     for partition in $(parted -s $selected_drive print | awk '/^ / {print $1}' | tac); do
         umount -l ${selected_drive}$partition > /dev/null 2>&1
         parted -s $selected_drive rm $partition
-        echo [DEBUG]: unmounting and deleting: =${selected_drive}$partition= >> archer.log
+        
+        echo "[DEBUG]: unmounting and deleting: ->${selected_drive}$partition<-" >> archer.log
     done
 
     parted -s $selected_drive mklabel gpt
@@ -168,6 +211,8 @@ create_partitions() {
 
 enable_ntp() {
     timedatectl set-ntp true
+    
+    echo "[DEBUG]: network time protocol: ->$(timedatectl show | grep '^NTP=' | cut -d'=' -f 2)<-" >> archer.log
 }
 
 download_mirrorlist() {
@@ -176,8 +221,9 @@ download_mirrorlist() {
     api_param_protocol="protocol=http&protocol=https&ip_version=4"
     api_query="${api_endpoint}${api_param_country}${api_param_protocol}"
     wget -qO /etc/pacman.d/mirrorlist "$api_query"
-
     sed -i '/^#.*Server /s/^#//' /etc/pacman.d/mirrorlist
+    
+    awk '/Server/ {print "[DEBUG]: mirror:", "->"$3"<-"}' /etc/pacman.d/mirrorlist >> archer.log
 }
 
 install_pacman_packages() {
@@ -202,14 +248,13 @@ install_pacman_packages() {
         
 #         bluetooth
 #         pulseaudio-bluez
-
-        xorg
+# TODO: provide multiple desktop environments
         plasma
         konsole
         dolphin
     )
 
-    for package in ${packages[@]}; do echo [DEBUG]: package: =$package= >> archer.log; done
+    for package in ${packages[@]}; do echo "[DEBUG]: package: ->$package<-" >> archer.log; done
 
     sed -i '/Color/s/^#//g' /etc/pacman.conf
     sed -i '/CheckSpace/s/^#//g' /etc/pacman.conf
@@ -225,7 +270,7 @@ install_aur_packages() {
         brave-bin
     )
 
-    for package in ${packages[@]}; do echo [DEBUG]: AUR package: =$package= >> archer.log; done
+    for package in ${packages[@]}; do echo "[DEBUG]: AUR package: ->$package<-" >> archer.log; done
 
     sed -i '/^root.*/a nobody ALL=(ALL) NOPASSWD: ALL' /mnt/etc/sudoers
 
@@ -241,49 +286,54 @@ install_aur_packages() {
     done
 
     sed -i '/^nobody.*/d' /mnt/etc/sudoers
+    
+    echo "[DEBUG]: aur packages installed: ->$(arch-chroot /mnt /bin/bash <<< 'pacman -Qm | wc -l')<-" >> archer.log
 }
 
 generate_fstab() {
     genfstab -U /mnt >> /mnt/etc/fstab
     sed -i 's/relatime/noatime/g' /mnt/etc/fstab
+    
+    echo "[DEBUG]: fstab generated: ->$([ -n "$(grep noatime /mnt/etc/fstab)" ] && echo yes || echo no)<-" >> archer.log
 }
 
 generate_locale() {
     arch-chroot /mnt /bin/bash <<< "sed -i '/^#$locale/s/^#//' /etc/locale.gen && \
         locale-gen > /dev/null 2>&1 && \
         echo 'LANG=$locale' > /etc/locale.conf"
-    #TODO ^V
+        
+    echo "[DEBUG]: locale generated: ->$([ -n "$(grep $locale /mnt/etc/locale.conf)" ] && echo yes || echo no)<-" >> archer.log
 }
 
-# set_keymap() {
-#     echo "KEYMAP=$keymap" > /mnt/etc/vconsole.conf
-# }
-
 install_bootloader() {
-  arch-chroot /mnt /bin/bash <<< "bootctl --path=/boot install > /dev/null 2>&1"
-  echo 'default arch-*' > /mnt/boot/loader/loader.conf
-  echo 'title  Arch Linux' > /mnt/boot/loader/entries/arch.conf
-  echo 'linux  /vmlinuz-linux' >> /mnt/boot/loader/entries/arch.conf
+    arch-chroot /mnt /bin/bash <<< "bootctl --path=/boot install > /dev/null 2>&1"
+    echo 'default arch-*' > /mnt/boot/loader/loader.conf
+    echo 'title  Arch Linux' > /mnt/boot/loader/entries/arch.conf
+    echo 'linux  /vmlinuz-linux' >> /mnt/boot/loader/entries/arch.conf
 
-  [ "$cpu_vendor" = intel ] && \
-    echo 'initrd /intel-ucode.img' >> /mnt/boot/loader/entries/arch.conf
-  [ "$cpu_vendor" = amd ] && \
-    echo 'initrd /amd-ucode.img' >> /mnt/boot/loader/entries/arch.conf
+    [ "$cpu_vendor" = intel ] && \
+        echo 'initrd /intel-ucode.img' >> /mnt/boot/loader/entries/arch.conf
+    [ "$cpu_vendor" = amd ] && \
+        echo 'initrd /amd-ucode.img' >> /mnt/boot/loader/entries/arch.conf
 
-  echo 'initrd /initramfs-linux.img' >> /mnt/boot/loader/entries/arch.conf
+    echo 'initrd /initramfs-linux.img' >> /mnt/boot/loader/entries/arch.conf
 
-  local root_uuid=$(blkid | \
-    grep ${selected_drive}2 | \
-    awk '{print $2}' | \
-    cut -d'"' -f 2)
+    local root_uuid=$(blkid | \
+        grep ${selected_drive}2 | \
+        awk '{print $2}' | \
+        cut -d'"' -f 2)
 
-  echo "options root=UUID=$root_uuid rw" >> /mnt/boot/loader/entries/arch.conf
+    echo "options root=UUID=$root_uuid rw" >> /mnt/boot/loader/entries/arch.conf
+    
+    echo "[DEBUG]: bootloader installed: ->$([ -n "$(grep UUID /mnt/boot/loader/entries/arch.conf)" ] && echo yes || echo no)<-" >> archer.log
 }
 
 set_timezone() {
     arch-chroot /mnt /bin/bash <<< "timedatectl set-ntp true && \
         ln -sf /usr/share/zoneinfo/$timezone /etc/localtime && \
         hwclock --systohc"
+        
+    echo "[DEBUG]: timezone configured: ->$([ -n "$(ls -la /mnt/etc/localtime | grep $timezone)" ] && echo yes || echo no)<-" >> archer.log
 }
 
 configure_network() {
@@ -291,6 +341,8 @@ configure_network() {
     echo "127.0.0.1  localhost" >> /mnt/etc/hosts
     echo "::1        localhost" >> /mnt/etc/hosts
     echo "127.0.1.1  $hostname.localdomain $hostname" >> /mnt/etc/hosts
+    
+    echo "[DEBUG]: network configured: ->$([ -n "$(grep $hostname /mnt/etc/hosts)" ] && echo yes || echo no)<-" >> archer.log
 }
 
 configure_pacman() {
@@ -298,31 +350,28 @@ configure_pacman() {
     sed -i '/CheckSpace/s/^#//g' /mnt/etc/pacman.conf
     sed -i '/VerbosePkgLists/s/^#//g' /mnt/etc/pacman.conf
     sed -i '/VerbosePkgLists/a ILoveCandy' /mnt/etc/pacman.conf
+    
+    echo "[DEBUG]: pacman configured: ->$([ -n "$(grep ILoveCandy /mnt/etc/pacman.conf)" ] && echo yes || echo no)<-" >> archer.log
 }
-# 
-# configure_libinput() {
-#     mkdir -p /mnt/etc/X11/xorg.conf.d
-#     echo 'Section "InputClass"' > /mnt/etc/X11/xorg.conf.d/50-touchpad.conf
-#     echo '  Identifier "tapping and natural scrolling"' >> /mnt/etc/X11/xorg.conf.d/50-touchpad.conf
-#     echo '  MatchIsTouchpad "on"' >> /mnt/etc/X11/xorg.conf.d/50-touchpad.conf
-#     echo '  MatchDriver "libinput"' >> /mnt/etc/X11/xorg.conf.d/50-touchpad.conf
-#     echo '  Option "Tapping" "on"' >> /mnt/etc/X11/xorg.conf.d/50-touchpad.conf
-#     echo '  Option "NaturalScrolling" "true"' >> /mnt/etc/X11/xorg.conf.d/50-touchpad.conf
-#     echo 'EndSection' >> /mnt/etc/X11/xorg.conf.d/50-touchpad.conf
-# }
 
 #TODO: modify master file
 configure_tlp() {
     [ "$gpu_configuration" = optimus ] && \
         echo 'RUNTIME_PM_DRIVER_BLACKLIST="nouveau nvidia"' > /mnt/etc/tlp.d/10-driver-blacklist.conf
+    # TODO: update this after tlp config will be migrated to main file
+    echo "[DEBUG]: tlp configured: ->$([ -n "$(grep nvidia /mnt/etc/tlp.d/10-driver-blacklist.conf)" ] && echo yes || echo no)<-" >> archer.log
 }
 
 configure_journald() {
     sed -i 's/#SystemMaxUse.*/SystemMaxUse=50M/g' /mnt/etc/systemd/journald.conf
+    
+    echo "[DEBUG]: journald configured: ->$([ -n "$(grep '^SystemMaxUse' /mnt/etc/systemd/journald.conf)" ] && echo yes || echo no)<-" >> archer.log
 }
 
 configure_coredump() {
     sed -i 's/#Storage.*/Storage=none/g' /mnt/etc/systemd/coredump.conf
+    
+    echo "[DEBUG]: coredump configured: ->$([ -n "$(grep '^Storage' /mnt/etc/systemd/coredump.conf)" ] && echo yes || echo no)<-" >> archer.log
 }
 
 enable_services() {
@@ -347,124 +396,114 @@ set_root_password() {
 
 create_user() {
     arch-chroot /mnt /bin/bash <<< "groupadd $username && \
-        useradd $username -m -g $username -G wheel,storage,power,network,video,audio,lp,sys,input && \
+        useradd $username -m -g $username -G wheel && \
         yes $password | passwd $username > /dev/null 2>&1 && \
         chown -R $username:$username /home/$username"
 
-    mkdir /mnt/etc/systemd/getty@tty1.service.d
+    # TODO: change this
+    # mkdir /mnt/etc/systemd/getty@tty1.service.d
 
-    echo '[Service]' > /mnt/etc/systemd/system/getty@tty1.service.d/override.conf
-    echo 'ExecStart=' > /mnt/etc/systemd/system/getty@tty1.service.d/override.conf
-    echo "ExecStart=-/usr/bin/agetty --autologin $username --noclear %I \$TERM" > /mnt/etc/system/systemd/getty@tty1.service.d/override.conf
+    # echo '[Service]' > /mnt/etc/systemd/system/getty@tty1.service.d/override.conf
+    # echo 'ExecStart=' > /mnt/etc/systemd/system/getty@tty1.service.d/override.conf
+    # echo "ExecStart=-/usr/bin/agetty --autologin $username --noclear %I \$TERM" > /mnt/etc/system/systemd/getty@tty1.service.d/override.conf
 
     sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^# //' /mnt/etc/sudoers
     [ "$gpu_configuration" = optimus ] && \
         arch-chroot /mnt /bin/bash <<< "gpasswd -a $username bumblebee > /dev/null"
+        
+    echo "[DEBUG]: user created: ->$([ -n "$(grep $username <<< `arch-chroot /mnt /bin/bash <<< 'cut -d: -f1 /etc/passwd'`)" ] && echo yes || echo no)<-" >> archer.log
 }
 
-#TODO: progress bar
 #TODO: mirror ranking
 setup() {
     echo "[LOG]" > archer.log
 
-    set_terminal_colors
+    set_terminal_colors"$has_battery" = yes
 
     set_newt_colors
 
     boot_mode="$(detect_boot_mode)"
-    echo "[DEBUG]: boot mode: =$boot_mode=" >> archer.log
+    echo "[DEBUG]: boot mode: ->$boot_mode<-" >> archer.log
 
-    [ $boot_mode != UEFI ] && echo "[ERROR]: boot mode not supported: =$boot_mode=" >> archer.log
+    [ $boot_mode != UEFI ] && echo "[ERROR]: boot mode not supported: ->$boot_mode<-" >> archer.log
     [ $boot_mode != UEFI ] && exit 0
 
     cpu_vendor="$(detect_cpu_vendor)"
-    echo "[DEBUG]: cpu vendor: =$cpu_vendor=" >> archer.log
+    echo "[DEBUG]: cpu vendor: ->$cpu_vendor<-" >> archer.log
     gpu_configuration="$(detect_gpu_configuration)"
-    echo "[DEBUG]: gpu configuration: =$gpu_configuration=" >> archer.log
+    echo "[DEBUG]: gpu configuration: ->$gpu_configuration<-" >> archer.log
     has_battery="$(detect_battery)"
-    echo "[DEBUG]: battery: =$has_battery=" >> archer.log
+    echo "[DEBUG]: battery: ->$has_battery<-" >> archer.log
     has_wireless="$(detect_wireless)"
-    echo "[DEBUG]: wireless: =$has_wireless=" >> archer.log
+    echo "[DEBUG]: wireless: ->$has_wireless<-" >> archer.log
     has_bluetooth="$(detect_bluetooth)"
-    echo "[DEBUG]: bluetooth: =has_bluetooth=" >> archer.log
-#     has_touchpad="$(detect_touchpad)"
-#     echo "[DEBUG]: touchpad: =$has_touchpad=" >> archer.log
+    echo "[DEBUG]: bluetooth: ->$has_bluetooth<-" >> archer.log
     has_ssd="$(detect_ssd)"
-    echo "[DEBUG]: ssd: =$has_ssd=" >> archer.log
+    echo "[DEBUG]: ssd: ->$has_ssd<-" >> archer.log
 
 
     selected_drive="$(get_drive)"
-    echo "[DEBUG]: selected drve: =$selected_drive=" >> archer.log
+    echo "[DEBUG]: selected drve: ->$selected_drive<-" >> archer.log
     mirrorlist_country="$(get_mirrorlist_country)"
-    echo "[DEBUG]: mirrorlist country: =$mirrorlist_country=" >> archer.log
+    echo "[DEBUG]: mirrorlist country: ->$mirrorlist_country<-" >> archer.log
     locale="$(get_locale)"
-    echo "[DEBUG]: locale: =$locale=" >> archer.log
-#     keymap="$(get_keymap)"
-#     echo "[DEBUG]: keymap: =$keymap=" >> archer.log
+    echo "[DEBUG]: locale: ->$locale<-" >> archer.log
     timezone="$(get_timezone)"
-    echo "[DEBUG]: timezone: =$timezone=" >> archer.log
+    echo "[DEBUG]: timezone: ->$timezone<-" >> archer.log
     hostname="$(get_hostname)"
-    echo "[DEBUG]: hostname: =$hostname=" >> archer.log
+    echo "[DEBUG]: hostname: ->$hostname<-" >> archer.log
     username="$(get_username)"
-    echo "[DEBUG]: username: =$username=" >> archer.log
+    echo "[DEBUG]: username: ->$username<-" >> archer.log
     password="$(get_password)"
-    echo "[DEBUG]: password: =$password=" >> archer.log
-
-    create_partitions
-
-    enable_ntp
-    echo "[DEBUG]: network time protocol: =$(timedatectl show | grep '^NTP=' | cut -d'=' -f 2)=" >> archer.log
-
-    download_mirrorlist
-    awk '/Server/ {print "[DEBUG]: mirror:", "="$3"="}' /etc/pacman.d/mirrorlist >> archer.log
-
-    install_pacman_packages
-
-    install_aur_packages
-    echo "[DEBUG]: aur packages installed: =$(arch-chroot /mnt /bin/bash <<< 'pacman -Qm | wc -l')=" >> archer.log
-
-    generate_fstab
-    echo "[DEBUG]: fstab generated: =$([ -n "$(grep noatime /mnt/etc/fstab)" ] && echo yes || echo no)=" >> archer.log
-
-    generate_locale
-    echo "[DEBUG]: locale generated: =$([ -n "$(grep $locale /mnt/etc/locale.conf)" ] && echo yes || echo no)=" >> archer.log
-
-#     set_keymap
-#     echo "[DEBUG]: keymap set: =$([ -n "$(grep $keymap /mnt/etc/vconsole.conf)" ] && echo yes || echo no)=" >> archer.log
-
-    install_bootloader
-    echo "[DEBUG]: bootloader installed: =$([ -n "$(grep UUID /mnt/boot/loader/entries/arch.conf)" ] && echo yes || echo no)=" >> archer.log
-
-    set_timezone
-    echo "[DEBUG]: timezone configured: =$([ -n "$(ls -la /mnt/etc/localtime | grep $timezone)" ] && echo yes || echo no)=" >> archer.log
-
-    configure_network
-    echo "[DEBUG]: network configured: =$([ -n "$(grep $hostname /mnt/etc/hosts)" ] && echo yes || echo no)=" >> archer.log
-
-    configure_pacman
-    echo "[DEBUG]: pacman configured: =$([ -n "$(grep ILoveCandy /mnt/etc/pacman.conf)" ] && echo yes || echo no)=" >> archer.log
-
-#     [ "$has_touchpad" = yes ] && configure_libinput
-#     echo "[DEBUG]: libinput configured: =$([ -n "$(grep InputClass /mnt/etc/X11/xorg.conf.d/50-touchpad.conf)" ] && echo yes || echo no)=" >> archer.log
-
-    [ "$has_battery" = yes ] && configure_tlp
-    # TODO: update this after tlp config will be migrated to main file
-    echo "[DEBUG]: tlp configured: =$([ -n "$(grep nvidia /mnt/etc/tlp.d/10-driver-blacklist.conf)" ] && echo yes || echo no)=" >> archer.log
-
-    configure_journald
-    echo "[DEBUG]: journald configured: =$([ -n "$(grep '^SystemMaxUse' /mnt/etc/systemd/journald.conf)" ] && echo yes || echo no)=" >> archer.log
-
-    configure_coredump
-    echo "[DEBUG]: coredump configured: =$([ -n "$(grep '^Storage' /mnt/etc/systemd/coredump.conf)" ] && echo yes || echo no)=" >> archer.log
-
-    enable_services
-    #systemctl status
-
-    set_root_password
-    #sudo check
-
-    create_user
-    echo "[DEBUG]: user created: =$([ -n "$(grep $username <<< `arch-chroot /mnt /bin/bash <<< 'cut -d: -f1 /etc/passwd'`)" ] && echo yes || echo no)=" >> archer.log
+    echo "[DEBUG]: password: ->$password<-" >> archer.log
+    
+    declare -A description
+    description[create_partitions]='Creating partitions'
+    description[enable_ntp]='Enabling NTP'
+    description[download_mirrorlist]='Downloading mirrorlist'
+    description[install_pacman_packages]='Installing pacman packages'
+    description[install_aur_packages]='Installing AUR packages'
+    description[generate_fstab]='Generating fstab'
+    description[generate_locale]='Generating locale'
+    description[install_bootloader]='Installing bootloader'
+    description[set_timezone]='Setting timezone'
+    description[configure_network]='Configuring network'
+    description[configure_pacman]='Configuring pacman'
+    description[configure_tlp]='Configuring TLP'
+    description[configure_journald]='Configuring journald'
+    description[configure_coredump]='Configuring coredump'
+    description[set_root_password]='Setting root password'
+    description[create_user]="Creating user $username"
+    
+    local execution_order=(
+        create_partitions
+        enable_ntp
+        download_mirrorlist
+        install_pacman_packages
+        install_aur_packages
+        generate_fstab
+        generate_locale
+        install_bootloader
+        set_timezone
+        configure_network
+        configure_pacman
+        $([ "$has_battery" = yes ] && echo configure_tlp)
+        configure_journald
+        configure_coredump
+        set_root_password
+        create_user
+    )
+    
+    for step in ${!execution_order[@]}; do
+        whiptail --gauge "${description[${execution_order[$step]}]}" <<< "$(expr $step \* 100 / ${#execution_order[@]})" 
+        
+        ${execution_order[$step]}
+    done
+    
+    whiptail --title 'Show log' --yesno "Show installation log?" 0 0 3>&1 1>&2 2>&3
+    
+    [ $? = 0 ] && whiptail --title 'archer.log' --textbox archer.log 0 0 3>&1 1>&2 2>&3
+    
 }
 
 setup
