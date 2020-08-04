@@ -261,7 +261,22 @@ install_pacman_packages() {
     sed -i '/VerbosePkgLists/s/^#//g' /etc/pacman.conf
     sed -i '/VerbosePkgLists/a ILoveCandy' /etc/pacman.conf
 
-    pacstrap /mnt ${packages[@]}
+    pacstrap /mnt ${packages[@]} | awk '
+	/Packages/ {
+		total=substr($2, 2, length($2) - 2)
+	}
+	/downloading.*\.tar.*/ {
+		dlindex++;
+		print "XXX\n"int(dlindex*100/total)"\ndownloading "substr($2, 1, match($2, /-[^\.]-.*\.pkg\.tar.*) - 1)"\nXXX"
+	}
+	/installing.*\.\.\./ {
+		insindex++;
+		print "XXX\n"int(insindex*100/total)"\ninstalling "substr($2, 1, length($2) - 3)"\nXXX"
+	}
+	{
+		fflush(stdout)
+	}
+    '
 }
 
 install_aur_packages() {
