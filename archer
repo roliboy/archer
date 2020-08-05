@@ -262,20 +262,29 @@ install_pacman_packages() {
     sed -i '/VerbosePkgLists/a ILoveCandy' /etc/pacman.conf
 
     pacstrap /mnt ${packages[@]} | awk '
-	/Packages/ {
-		total=substr($2, 2, length($2) - 2)
-	}
-	/downloading.*\.tar.*/ {
-		dlindex++;
-		print "XXX\n"int(dlindex*100/total)"\ndownloading "substr($2, 1, match($2, /-[^\.]-.*\.pkg\.tar.*) - 1)"\nXXX"
-	}
-	/installing.*\.\.\./ {
-		insindex++;
-		print "XXX\n"int(insindex*100/total)"\ninstalling "substr($2, 1, length($2) - 3)"\nXXX"
-	}
-	{
-		fflush(stdout)
-	}
+        /^:: Synchronizing package databases\.\.\.$/ {
+            print "XXX\n0\nSynchronizing package databases\nXXX"
+        }
+        /^Packages \([0-9]*\)/ {
+            total=substr($2, 2, length($2) - 2)
+        }
+        /^downloading .*\.pkg\.tar.*\.\.\.$/ {
+            dlindex++;
+            print "XXX\n"int(dlindex*100/total)"\ndownloading "substr($2, 1, match($2, /\.pkg\.tar.*/) - 1)"\nXXX"
+        }
+        /^checking .*\.\.\.$/ {
+            print "XXX\n0\n"substr($0, 1, length($0) - 3)"nXXX"
+        }
+        /^installing .*\.\.\.$/ {
+            insindex++;
+            print "XXX\n"int(insindex*100/total)"\ninstalling "substr($2, 1, length($2) - 3)"\nXXX"
+        }
+        /^:: Running post-transaction hooks\.\.\.$/ {
+            print "XXX\n0\nRunning post-transaction hooks\nXXX"
+        }
+        {
+            fflush(stdout)
+        }
     '
 }
 
