@@ -21,66 +21,49 @@ set_terminal_colors() {
     clear #for background artifacting
 }
 
+# TODO: update this
 set_newt_colors() {
     export NEWT_COLORS='
         root=,black
+        border=cyan,black
+        window=,black
+        shadow=,black
+        title=cyan,black
+        button=black,cyan
+        actbutton=red,green
+        checkbox=red,green
+        actcheckbox=red,green
+        entry=cyan,black
+        label=red,green
+        listbox=cyan,black
+        actlistbox=black,cyan
+        textbox=cyan,black
+        acttextbox=red,green
+        helpline=red,green
+        roottext=red,green
+        emptyscale=,black
+        fullscale=,cyan
+        disentry=red,green
+        compactbutton=cyan,black
+        actsellistbox=black,cyan
+        sellistbox=red,green
     '
-    
-# NEWT_COLORS_0='
-#     root=,blue
-# '
-# NEWT_COLORS_1='
-#     root=,blue
-#     checkbox=,blue
-#     entry=,blue
-#     label=blue,
-#     actlistbox=,blue
-#     helpline=,blue
-#     roottext=,blue
-#     emptyscale=blue
-#     disabledentry=blue,
-# '
-# NEWT_COLORS_2='
-#     root=green,black
-#     border=green,black
-#     title=green,black
-#     roottext=white,black
-#     window=green,black
-#     textbox=white,black
-#     button=black,green
-#     compactbutton=white,black
-#     listbox=white,black
-#     actlistbox=black,white
-#     actsellistbox=black,green
-#     checkbox=green,black
-#     actcheckbox=black,green
-# '
-# NEWT_COLORS_3='
-#     root=white,black
-#     border=black,lightgray
-#     window=lightgray,lightgray
-#     shadow=black,gray
-#     title=black,lightgray
-#     button=black,cyan
-#     actbutton=white,cyan
-#     compactbutton=black,lightgray
-#     checkbox=black,lightgray
-#     actcheckbox=lightgray,cyan
-#     entry=black,lightgray
-#     disentry=gray,lightgray
-#     label=black,lightgray
-#     listbox=black,lightgray
-#     actlistbox=black,cyan
-#     sellistbox=lightgray,black
-#     actsellistbox=lightgray,black
-#     textbox=black,lightgray
-#     acttextbox=black,cyan
-#     emptyscale=,gray
-#     fullscale=,cyan
-#     helpline=white,black
-#     roottext=lightgrey,black
-# '
-
+# color0  or black
+# color1  or red
+# color2  or green
+# color3  or brown
+# color4  or blue
+# color5  or magenta
+# color6  or cyan
+# color7  or lightgray
+# color8  or gray
+# color9  or brightred
+# color10 or brightgreen
+# color11 or yellow
+# color12 or brightblue
+# color13 or brightmagenta
+# color14 or brightcyan
+# color15 or white
 }
 
 
@@ -207,6 +190,8 @@ create_partitions() {
     mount ${selected_drive}2 /mnt
     mkdir /mnt/boot
     mount ${selected_drive}1 /mnt/boot
+
+    # TODO: check if partitions were created
 }
 
 enable_ntp() {
@@ -215,6 +200,7 @@ enable_ntp() {
     echo "[DEBUG]: network time protocol: ->$(timedatectl show | grep '^NTP=' | cut -d'=' -f 2)<-" >> archer.log
 }
 
+# TODO: rank mirrors
 download_mirrorlist() {
     api_endpoint="https://www.archlinux.org/mirrorlist/?"
     api_param_country="country=$mirrorlist_country&"
@@ -256,11 +242,7 @@ install_pacman_packages() {
 
     for package in ${packages[@]}; do echo "[DEBUG]: package: ->$package<-" >> archer.log; done
 
-    sed -i '/Color/s/^#//g' /etc/pacman.conf
-    sed -i '/CheckSpace/s/^#//g' /etc/pacman.conf
-    sed -i '/VerbosePkgLists/s/^#//g' /etc/pacman.conf
-    sed -i '/VerbosePkgLists/a ILoveCandy' /etc/pacman.conf
-
+    # TODO: improve post-transaction hooks feedback
     pacstrap /mnt ${packages[@]} | awk '
         /^:: Synchronizing package databases\.\.\.$/ {
             print "XXX\n0\nSynchronizing package databases\nXXX"
@@ -270,14 +252,14 @@ install_pacman_packages() {
         }
         /^downloading .*\.pkg\.tar.*\.\.\.$/ {
             dlindex++;
-            print "XXX\n"int(dlindex*100/total)"\ndownloading "substr($2, 1, match($2, /\.pkg\.tar.*/) - 1)"\nXXX"
+            print "XXX\n"int(dlindex*100/total)"\nDownloading "substr($2, 1, match($2, /\.pkg\.tar.*/) - 1)"\nXXX"
         }
         /^checking .*\.\.\.$/ {
-            print "XXX\n0\n"substr($0, 1, length($0) - 3)"nXXX"
+            print "XXX\n0\n"substr($0, 1, length($0) - 3)"\nXXX"
         }
         /^installing .*\.\.\.$/ {
             insindex++;
-            print "XXX\n"int(insindex*100/total)"\ninstalling "substr($2, 1, length($2) - 3)"\nXXX"
+            print "XXX\n"int(insindex*100/total)"\nInstalling "substr($2, 1, length($2) - 3)"\nXXX"
         }
         /^:: Running post-transaction hooks\.\.\.$/ {
             print "XXX\n0\nRunning post-transaction hooks\nXXX"
@@ -418,6 +400,7 @@ set_root_password() {
     arch-chroot /mnt /bin/bash <<< "yes $password | passwd > /dev/null 2>&1"
 }
 
+# TODO: shell choices
 create_user() {
     arch-chroot /mnt /bin/bash <<< "groupadd $username && \
         useradd $username -m -g $username -G wheel && \
@@ -439,6 +422,7 @@ create_user() {
 }
 
 #TODO: mirror ranking
+#TODO: radio/checklist for features
 setup() {
     echo "[LOG]" > archer.log
 
@@ -521,7 +505,7 @@ setup() {
     for step in ${!execution_order[@]}; do
         echo -e "XXX\n$(expr $step \* 100 / ${#execution_order[@]})\n${description[${execution_order[$step]}]}\nXXX"
         ${execution_order[$step]}
-    done | whiptail --title "Progress" --gauge "Initializing" 0 0 0
+    done | whiptail --title "Progress" --gauge "Initializing" 0 $(expr $(tput cols) \* 3 / 4) 0
     
     whiptail --title 'Show log' --yesno "Show installation log?" 0 0 3>&1 1>&2 2>&3
     
