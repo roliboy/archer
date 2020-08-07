@@ -18,7 +18,7 @@ set_terminal_colors() {
     echo -ne "\e]PE34e2e2" #cyan
     echo -ne "\e]P7d3d7cf" #lightgrey
     echo -ne "\e]PFeeeeec" #white
-    clear #for background artifacting
+    clear
 }
 
 # TODO: update this
@@ -169,6 +169,31 @@ get_password() {
     whiptail --title 'Password' --passwordbox "Enter password: " 0 0 3>&1 1>&2 2>&3
 }
 
+get_desktop_environment() {
+    whiptail --title 'DE/WM' --radiolist 'Select desktop environment / window manager' 0 $(expr $(tput cols) \* 3 / 4) 0 \
+        'bspwm' 'Tiling window manager that represents windows as the leaves of a full binary tree' OFF \
+        'Budgie' 'Desktop environment designed with the modern user in mind, that focuses on simplicity and elegance' OFF \
+        'Cinnamon' 'Combines a traditional desktop layout with modern graphical effects' OFF \
+        'Deepin' 'Intuitive and elegant design providing an easy to use and reliable system for global users' OFF \
+        'dwm' 'extremely lightweight and fast tiling WM, optimizing the environment for the task being performed' OFF \
+        'GNOME' 'Attractive, intuitive and extensible desktop with a modern look' OFF \
+        'i3' 'Tiling window manager primarily targeted at developers and advanced users' OFF \
+        'KDE Plasma' 'Modern and polished, highly customizable and extremely lightweight' ON \
+        'LXDE' 'Lightweight, fast and energy-saving desktop environment with a modern interface' OFF \
+        'LXQt' 'Modular, blazing-fast and user-friendly desktop environment' OFF \
+        'MATE' 'Intuitive and attractive, preserving a traditional desktop experience' OFF \
+        'Xfce' 'Lightweight and modular desktop environment ' OFF \
+        'None' 'Don'\''t install a desktop environment / window manager'  OFF \
+        3>&1 1>&2 2>&3
+}
+
+get_optional_features() {
+    whiptail --title 'Optional features' --checklist 'Select optional features' --separate-output 0 $(expr $(tput cols) \* 3 / 4) 0 \
+        'Autologin' 'Automatic login (no password)' ON \
+        'Archstrike repository' 'Enable Archstrike repository (pentesting tools)' ON \
+        3>&1 1>&2 2>&3
+}
+
 
 create_partitions() {
     for partition in $(parted -s $selected_drive print | awk '/^ / {print $1}' | tac); do
@@ -268,6 +293,23 @@ install_pacman_packages() {
             fflush(stdout)
         }
     '
+}
+
+enable_archstrike_repository() {
+    echo '[archstrike]' >> /mnt/etc/pacman.conf
+    echo 'Server = https://mirror.archstrike.org/$arch/$repo' >> /mnt/etc/pacman.conf
+    
+    arch-chroot /mnt /bin/bash <<< "pacman -Syy && \
+        pacman-key --init && \
+        curl -sO https://archstrike.org/keyfile.asc && \
+        pacman-key --add keyfile.asc && \
+        rm keyfile.asc && \
+        pacman-key --lsign-key 9D5F1C051D146843CDA4858BDE64825E7CBC0D51 && \
+        pacman -S archstrike-keyring && \
+        pacman -S archstrike-mirrorlist && \
+        # Include = /etc/pacman.d/archstrike-mirrorlist && \
+        sed -i '/mirror\.archstrike\.org/c\Include = /etc/pacman.d/archstrike-mirrorlist' /mnt/etc/pacman.conf && \
+        pacman -Syy"
 }
 
 install_aur_packages() {
@@ -398,6 +440,8 @@ enable_services() {
 
 set_root_password() {
     arch-chroot /mnt /bin/bash <<< "yes $password | passwd > /dev/null 2>&1"
+
+    # TODO: debug check
 }
 
 # TODO: shell choices
@@ -407,22 +451,30 @@ create_user() {
         yes $password | passwd $username > /dev/null 2>&1 && \
         chown -R $username:$username /home/$username"
 
-    # TODO: change this
-    # mkdir /mnt/etc/systemd/getty@tty1.service.d
-
-    # echo '[Service]' > /mnt/etc/systemd/system/getty@tty1.service.d/override.conf
-    # echo 'ExecStart=' > /mnt/etc/systemd/system/getty@tty1.service.d/override.conf
-    # echo "ExecStart=-/usr/bin/agetty --autologin $username --noclear %I \$TERM" > /mnt/etc/system/systemd/getty@tty1.service.d/override.conf
-
+    
     sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^# //' /mnt/etc/sudoers
     [ "$gpu_configuration" = optimus ] && \
         arch-chroot /mnt /bin/bash <<< "gpasswd -a $username bumblebee > /dev/null"
-        
+
+    # TODO: debug check
     # echo "[DEBUG]: user created: ->$([ -n \"$(grep $username <<< `arch-chroot /mnt /bin/bash <<< 'cut -d: -f1 /etc/passwd'`)\" ] && echo yes || echo no)<-" >> archer.log
 }
 
-#TODO: mirror ranking
-#TODO: radio/checklist for features
+enable_autologin() {
+    # TODO: handle different display managers
+    # TODO: if statements / reduce line size
+
+
+    [ "$desktop_environment" = 'KDE Plasma' ] && echo -e "[Autologin]\nUser=$username\nSession=plasma.desktop" > /mnt/etc/sddm.conf.d/autologin.conf
+    
+    # mkdir /mnt/etc/systemd/getty@tty1.service.d ?
+    [ "$desktop_environment" = 'None' ] && echo -e "[Service]\nExecStart=\nExecStart=-/usr/bin/agetty --autologin $username --noclear %I \$TERM" > /mnt/etc/system/systemd/getty@tty1.service.d/override.conf
+    
+    # TODO: debug check
+}
+
+# TODO: interface size
+# TODO: mirror ranking
 setup() {
     echo "[LOG]" > archer.log
 
@@ -463,12 +515,25 @@ setup() {
     echo "[DEBUG]: username: ->$username<-" >> archer.log
     password="$(get_password)"
     echo "[DEBUG]: password: ->$password<-" >> archer.log
-    
+
+    desktop_environment="$(get_desktop_environment)"
+    echo "[DEBUG]: DE/WM: ->$desktop_environment<-" >> archer.log
+
+    optional_features="$(get_optional_features)"
+    # echo $optional_features
+
+    feature_autologin=$([ -n "$(grep 'Autologin' <<< $optional_features)" ] && echo yes || echo no)
+    echo "[DEBUG]: Enable autologin: ->$feature_autologin<-" >> archer.log
+    feature_archstrike_repository=$([ -n "$(grep 'Archstrike repository' <<< $optional_features)" ] && echo yes || echo no)
+    echo "[DEBUG]: Enable Archstrike repository: ->$feature_archstrike_repository<-" >> archer.log
+
+
     declare -A description
-    description[create_partitions]='Creating partitions'
+    description[create_partitions]="Creating partitions on $selected_drive"
     description[enable_ntp]='Enabling NTP'
     description[download_mirrorlist]='Downloading mirrorlist'
     description[install_pacman_packages]='Installing pacman packages'
+    description[enable_archstrike_repository]='Enabling archstrike repository'
     description[install_aur_packages]='Installing AUR packages'
     description[generate_fstab]='Generating fstab'
     description[generate_locale]='Generating locale'
@@ -481,12 +546,15 @@ setup() {
     description[configure_coredump]='Configuring coredump'
     description[set_root_password]='Setting root password'
     description[create_user]="Creating user $username"
+    description[enable_autologin]="Enabling autologin for $username"
+    
     
     local execution_order=(
         create_partitions
         enable_ntp
         download_mirrorlist
         install_pacman_packages
+        $([ "$feature_archstrike_repository" = yes ] && echo enable_archstrike_repository)
         install_aur_packages
         generate_fstab
         generate_locale
@@ -499,6 +567,7 @@ setup() {
         configure_coredump
         set_root_password
         create_user
+        $([ "$feature_autologin" = yes ] && echo enable_autologin)
     )
     
 
