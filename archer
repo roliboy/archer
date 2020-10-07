@@ -22,6 +22,7 @@ set_terminal_colors() {
 }
 
 # TODO: update this
+# possible values: black red green brown blue magenta cyan lightgray gray brightred brightgreen yellow brightblue brightmagenta brightcyan white
 set_newt_colors() {
     export NEWT_COLORS='
         root=,black
@@ -48,22 +49,6 @@ set_newt_colors() {
         actsellistbox=black,cyan
         sellistbox=red,green
     '
-# color0  or black
-# color1  or red
-# color2  or green
-# color3  or brown
-# color4  or blue
-# color5  or magenta
-# color6  or cyan
-# color7  or lightgray
-# color8  or gray
-# color9  or brightred
-# color10 or brightgreen
-# color11 or yellow
-# color12 or brightblue
-# color13 or brightmagenta
-# color14 or brightcyan
-# color15 or white
 }
 
 
@@ -189,7 +174,7 @@ get_desktop_environment() {
 
 get_optional_features() {
     whiptail --title 'Optional features' --checklist 'Select optional features' --separate-output 0 $(expr $(tput cols) \* 3 / 4) 0 \
-        'Autologin' 'Automatic login (no password)' ON \
+        'Autologin' 'Get automatically logged in on boot' ON \
         'Archstrike repository' 'Enable Archstrike repository (pentesting tools)' ON \
         3>&1 1>&2 2>&3
 }
@@ -199,7 +184,7 @@ create_partitions() {
     for partition in $(parted -s $selected_drive print | awk '/^ / {print $1}' | tac); do
         umount -l ${selected_drive}$partition > /dev/null 2>&1
         parted -s $selected_drive rm $partition
-        
+
         echo "[DEBUG]: unmounting and deleting: ->${selected_drive}$partition<-" >> archer.log
     done
 
@@ -216,12 +201,14 @@ create_partitions() {
     mkdir /mnt/boot
     mount ${selected_drive}1 /mnt/boot
 
-    # TODO: check if partitions were created
+
+    echo "[DEBUG] boot partition created and mounted: ->$([ -n "$(findmnt -o TARGET,FSTYPE ${selected_drive}1 | grep /boot | grep vfat)" ] && echo yes || echo no)<-" >> archer.log
+    echo "[DEBUG] root partition created and mounted: ->$([ -n "$(findmnt -o TARGET,FSTYPE ${selected_drive}2 | grep / | grep ext4)" ] && echo yes || echo no)<-" >> archer.log
 }
 
 enable_ntp() {
     timedatectl set-ntp true
-    
+
     echo "[DEBUG]: network time protocol: ->$(timedatectl show | grep '^NTP=' | cut -d'=' -f 2)<-" >> archer.log
 }
 
@@ -233,7 +220,7 @@ download_mirrorlist() {
     api_query="${api_endpoint}${api_param_country}${api_param_protocol}"
     wget -qO /etc/pacman.d/mirrorlist "$api_query"
     sed -i '/^#.*Server /s/^#//' /etc/pacman.d/mirrorlist
-    
+
     awk '/Server/ {print "[DEBUG]: mirror:", "->"$3"<-"}' /etc/pacman.d/mirrorlist >> archer.log
 }
 
@@ -256,7 +243,7 @@ install_pacman_packages() {
 
         $([ "$has_battery" = yes ] && echo tlp)
         $([ "$has_battery" = yes ] && [ "$has_wireless" = yes ] && echo tlp-rdw)
-        
+
 #         bluetooth
 #         pulseaudio-bluez
 # TODO: provide multiple desktop environments
@@ -298,7 +285,7 @@ install_pacman_packages() {
 enable_archstrike_repository() {
     echo '[archstrike]' >> /mnt/etc/pacman.conf
     echo 'Server = https://mirror.archstrike.org/$arch/$repo' >> /mnt/etc/pacman.conf
-    
+
     arch-chroot /mnt /bin/bash <<< "pacman -Syy && \
         pacman-key --init && \
         curl -sO https://archstrike.org/keyfile.asc && \
@@ -334,14 +321,14 @@ install_aur_packages() {
     done
 
     sed -i '/^nobody.*/d' /mnt/etc/sudoers
-    
+
     echo "[DEBUG]: aur packages installed: ->$(arch-chroot /mnt /bin/bash <<< 'pacman -Qm | wc -l')<-" >> archer.log
 }
 
 generate_fstab() {
     genfstab -U /mnt >> /mnt/etc/fstab
     sed -i 's/relatime/noatime/g' /mnt/etc/fstab
-    
+
     echo "[DEBUG]: fstab generated: ->$([ -n "$(grep noatime /mnt/etc/fstab)" ] && echo yes || echo no)<-" >> archer.log
 }
 
@@ -349,7 +336,7 @@ generate_locale() {
     arch-chroot /mnt /bin/bash <<< "sed -i '/^#$locale/s/^#//' /etc/locale.gen && \
         locale-gen > /dev/null 2>&1 && \
         echo 'LANG=$locale' > /etc/locale.conf"
-        
+
     echo "[DEBUG]: locale generated: ->$([ -n "$(grep $locale /mnt/etc/locale.conf)" ] && echo yes || echo no)<-" >> archer.log
 }
 
@@ -372,7 +359,7 @@ install_bootloader() {
         cut -d'"' -f 2)
 
     echo "options root=UUID=$root_uuid rw" >> /mnt/boot/loader/entries/arch.conf
-    
+
     echo "[DEBUG]: bootloader installed: ->$([ -n "$(grep UUID /mnt/boot/loader/entries/arch.conf)" ] && echo yes || echo no)<-" >> archer.log
 }
 
@@ -380,7 +367,7 @@ set_timezone() {
     arch-chroot /mnt /bin/bash <<< "timedatectl set-ntp true && \
         ln -sf /usr/share/zoneinfo/$timezone /etc/localtime && \
         hwclock --systohc"
-        
+
     echo "[DEBUG]: timezone configured: ->$([ -n "$(ls -la /mnt/etc/localtime | grep $timezone)" ] && echo yes || echo no)<-" >> archer.log
 }
 
@@ -389,7 +376,7 @@ configure_network() {
     echo "127.0.0.1  localhost" >> /mnt/etc/hosts
     echo "::1        localhost" >> /mnt/etc/hosts
     echo "127.0.1.1  $hostname.localdomain $hostname" >> /mnt/etc/hosts
-    
+
     echo "[DEBUG]: network configured: ->$([ -n "$(grep $hostname /mnt/etc/hosts)" ] && echo yes || echo no)<-" >> archer.log
 }
 
@@ -398,7 +385,7 @@ configure_pacman() {
     sed -i '/CheckSpace/s/^#//g' /mnt/etc/pacman.conf
     sed -i '/VerbosePkgLists/s/^#//g' /mnt/etc/pacman.conf
     sed -i '/VerbosePkgLists/a ILoveCandy' /mnt/etc/pacman.conf
-    
+
     echo "[DEBUG]: pacman configured: ->$([ -n "$(grep ILoveCandy /mnt/etc/pacman.conf)" ] && echo yes || echo no)<-" >> archer.log
 }
 
@@ -412,13 +399,13 @@ configure_tlp() {
 
 configure_journald() {
     sed -i 's/#SystemMaxUse.*/SystemMaxUse=50M/g' /mnt/etc/systemd/journald.conf
-    
+
     echo "[DEBUG]: journald configured: ->$([ -n "$(grep '^SystemMaxUse' /mnt/etc/systemd/journald.conf)" ] && echo yes || echo no)<-" >> archer.log
 }
 
 configure_coredump() {
     sed -i 's/#Storage.*/Storage=none/g' /mnt/etc/systemd/coredump.conf
-    
+
     echo "[DEBUG]: coredump configured: ->$([ -n "$(grep '^Storage' /mnt/etc/systemd/coredump.conf)" ] && echo yes || echo no)<-" >> archer.log
 }
 
@@ -451,7 +438,7 @@ create_user() {
         yes $password | passwd $username > /dev/null 2>&1 && \
         chown -R $username:$username /home/$username"
 
-    
+
     sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^# //' /mnt/etc/sudoers
     [ "$gpu_configuration" = optimus ] && \
         arch-chroot /mnt /bin/bash <<< "gpasswd -a $username bumblebee > /dev/null"
@@ -466,10 +453,10 @@ enable_autologin() {
 
 
     [ "$desktop_environment" = 'KDE Plasma' ] && echo -e "[Autologin]\nUser=$username\nSession=plasma.desktop" > /mnt/etc/sddm.conf.d/autologin.conf
-    
+
     # mkdir /mnt/etc/systemd/getty@tty1.service.d ?
     [ "$desktop_environment" = 'None' ] && echo -e "[Service]\nExecStart=\nExecStart=-/usr/bin/agetty --autologin $username --noclear %I \$TERM" > /mnt/etc/system/systemd/getty@tty1.service.d/override.conf
-    
+
     # TODO: debug check
 }
 
@@ -547,8 +534,8 @@ setup() {
     description[set_root_password]='Setting root password'
     description[create_user]="Creating user $username"
     description[enable_autologin]="Enabling autologin for $username"
-    
-    
+
+
     local execution_order=(
         create_partitions
         enable_ntp
@@ -569,17 +556,17 @@ setup() {
         create_user
         $([ "$feature_autologin" = yes ] && echo enable_autologin)
     )
-    
+
 
     for step in ${!execution_order[@]}; do
         echo -e "XXX\n$(expr $step \* 100 / ${#execution_order[@]})\n${description[${execution_order[$step]}]}\nXXX"
         ${execution_order[$step]}
     done | whiptail --title "Progress" --gauge "Initializing" 0 $(expr $(tput cols) \* 3 / 4) 0
-    
+
     whiptail --title 'Show log' --yesno "Show installation log?" 0 0 3>&1 1>&2 2>&3
-    
+
     [ $? = 0 ] && whiptail --title 'archer.log' --textbox archer.log 0 0 3>&1 1>&2 2>&3
-    
+
 }
 
 setup
