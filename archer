@@ -218,7 +218,7 @@ download_mirrorlist() {
     api_param_country="country=$mirrorlist_country&"
     api_param_protocol="protocol=http&protocol=https&ip_version=4"
     api_query="${api_endpoint}${api_param_country}${api_param_protocol}"
-    wget -qO /etc/pacman.d/mirrorlist "$api_query"
+    curl -so /etc/pacman.d/mirrorlist "$api_query"
     sed -i '/^#.*Server /s/^#//' /etc/pacman.d/mirrorlist
 
     awk '/Server/ {print "[DEBUG]: mirror:", "->"$3"<-"}' /etc/pacman.d/mirrorlist >> archer.log
@@ -227,11 +227,13 @@ download_mirrorlist() {
 install_pacman_packages() {
     local packages=(
         base
+        #replace?
         base-devel
         linux
         linux-firmware
         $([ "$cpu_vendor" = intel ] && echo intel-ucode)
         $([ "$cpu_vendor" = amd ] && echo amd-ucode)
+
         networkmanager #dependency of plasma
 
         $([ "$gpu_configuration" = nvidia ] && echo nvidia)
@@ -244,6 +246,7 @@ install_pacman_packages() {
         $([ "$has_battery" = yes ] && echo tlp)
         $([ "$has_battery" = yes ] && [ "$has_wireless" = yes ] && echo tlp-rdw)
 
+# TODO: bluetooth
 #         bluetooth
 #         pulseaudio-bluez
 # TODO: provide multiple desktop environments
@@ -294,7 +297,6 @@ enable_archstrike_repository() {
         pacman-key --lsign-key 9D5F1C051D146843CDA4858BDE64825E7CBC0D51 && \
         pacman -S archstrike-keyring && \
         pacman -S archstrike-mirrorlist && \
-        # Include = /etc/pacman.d/archstrike-mirrorlist && \
         sed -i '/mirror\.archstrike\.org/c\Include = /etc/pacman.d/archstrike-mirrorlist' /mnt/etc/pacman.conf && \
         pacman -Syy"
 }
@@ -302,7 +304,6 @@ enable_archstrike_repository() {
 install_aur_packages() {
     local packages=(
         nerd-fonts-fira-code
-        brave-bin
     )
 
     for package in ${packages[@]}; do echo "[DEBUG]: AUR package: ->$package<-" >> archer.log; done
@@ -428,7 +429,7 @@ enable_services() {
 set_root_password() {
     arch-chroot /mnt /bin/bash <<< "yes $password | passwd > /dev/null 2>&1"
 
-    # TODO: debug check
+    echo "[DEBUG]: password set for root: ->$([ -n "$(grep root /mnt/etc/shadow | grep '\$6\$')" ] && echo yes || echo no)<-" >> archer.log
 }
 
 # TODO: shell choices
@@ -436,15 +437,17 @@ create_user() {
     arch-chroot /mnt /bin/bash <<< "groupadd $username && \
         useradd $username -m -g $username -G wheel && \
         yes $password | passwd $username > /dev/null 2>&1 && \
-        chown -R $username:$username /home/$username"
+        chown -R $username:$username /home/$username && \
+        usermod --shell /bin/bash $username"
 
 
+    # TODO: separate function
     sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^# //' /mnt/etc/sudoers
     [ "$gpu_configuration" = optimus ] && \
         arch-chroot /mnt /bin/bash <<< "gpasswd -a $username bumblebee > /dev/null"
 
-    # TODO: debug check
-    # echo "[DEBUG]: user created: ->$([ -n \"$(grep $username <<< `arch-chroot /mnt /bin/bash <<< 'cut -d: -f1 /etc/passwd'`)\" ] && echo yes || echo no)<-" >> archer.log
+    # TODO: check for other properties
+    echo "[DEBUG]: user created: ->$([ -n "$(grep $username /mnt/etc/shadow | grep '\$6\$')" ] && echo yes || echo no)<-" >> archer.log
 }
 
 enable_autologin() {
@@ -461,7 +464,6 @@ enable_autologin() {
 }
 
 # TODO: interface size
-# TODO: mirror ranking
 setup() {
     echo "[LOG]" > archer.log
 
