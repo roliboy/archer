@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# CWO: supress stderr from pacstrap
+# CWO: improve aur debug log
+
 set_terminal_colors() {
     setterm -blank 0 -powersave off
     echo -ne "\e]P02e3436" #black
@@ -22,24 +25,23 @@ set_terminal_colors() {
 }
 
 # TODO: update this
-# possible values: black red green brown blue magenta cyan lightgray gray brightred brightgreen yellow brightblue brightmagenta brightcyan white
 set_newt_colors() {
     export NEWT_COLORS='
         root=,black
         border=cyan,black
         window=,black
         shadow=,black
-        title=cyan,black
+        title=brightcyan,black
         button=black,cyan
         actbutton=red,green
-        checkbox=red,green
-        actcheckbox=red,green
+        checkbox=cyan,black
+        actcheckbox=black,cyan
         entry=cyan,black
         label=red,green
         listbox=cyan,black
         actlistbox=black,cyan
         textbox=cyan,black
-        acttextbox=red,green
+        acttextbox=black,cyan
         helpline=red,green
         roottext=red,green
         emptyscale=,black
@@ -228,13 +230,16 @@ install_pacman_packages() {
     local packages=(
         base
         #replace?
-        base-devel
-        linux
-        linux-firmware
+        sudo
+
+        make
+        patch
+        #linux
+        #linux-firmware
         $([ "$cpu_vendor" = intel ] && echo intel-ucode)
         $([ "$cpu_vendor" = amd ] && echo amd-ucode)
 
-        networkmanager #dependency of plasma
+        #networkmanager #dependency of plasma
 
         $([ "$gpu_configuration" = nvidia ] && echo nvidia)
 
@@ -250,9 +255,9 @@ install_pacman_packages() {
 #         bluetooth
 #         pulseaudio-bluez
 # TODO: provide multiple desktop environments
-        plasma
-        konsole
-        dolphin
+        #plasma
+        #konsole
+        #dolphin
     )
 
     for package in ${packages[@]}; do echo "[DEBUG]: package: ->$package<-" >> archer.log; done
@@ -467,14 +472,14 @@ enable_autologin() {
 setup() {
     echo "[LOG]" > archer.log
 
-    set_terminal_colors
-    set_newt_colors
-
     boot_mode="$(detect_boot_mode)"
     echo "[DEBUG]: boot mode: ->$boot_mode<-" >> archer.log
 
     [ $boot_mode != UEFI ] && echo "[ERROR]: boot mode not supported: ->$boot_mode<-" >> archer.log
     [ $boot_mode != UEFI ] && exit 0
+
+    set_terminal_colors
+    set_newt_colors
 
     cpu_vendor="$(detect_cpu_vendor)"
     echo "[DEBUG]: cpu vendor: ->$cpu_vendor<-" >> archer.log
