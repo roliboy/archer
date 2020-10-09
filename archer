@@ -24,7 +24,6 @@ set_terminal_colors() {
     clear
 }
 
-# TODO: update this
 set_newt_colors() {
     export NEWT_COLORS='
         root=,black
@@ -82,7 +81,7 @@ detect_battery() {
 }
 
 detect_wireless() {
-    [ -n "$(lspci | grep -i network | grep -i 'wireless\|WLAN\|wifi\|802.11')" ] && echo yes || echo no
+    [ -n "$(lspci | grep -i network | grep -i 'wireless\|WLAN\|wifi\|802\.11')" ] && echo yes || echo no
 }
 
 # experimental
@@ -229,27 +228,26 @@ download_mirrorlist() {
 install_pacman_packages() {
     local packages=(
         base
-        #replace?
         sudo
-
         make
         patch
+
         #linux
         #linux-firmware
-        $([ "$cpu_vendor" = intel ] && echo intel-ucode)
-        $([ "$cpu_vendor" = amd ] && echo amd-ucode)
+        #$([ "$cpu_vendor" = intel ] && echo intel-ucode)
+        #$([ "$cpu_vendor" = amd ] && echo amd-ucode)
 
         #networkmanager #dependency of plasma
 
-        $([ "$gpu_configuration" = nvidia ] && echo nvidia)
+        #$([ "$gpu_configuration" = nvidia ] && echo nvidia)
 
-        $([ "$gpu_configuration" = optimus ] && echo nvidia)
-        $([ "$gpu_configuration" = optimus ] && echo bumblebee)
-        $([ "$gpu_configuration" = optimus ] && echo bbswitch)
+        #$([ "$gpu_configuration" = optimus ] && echo nvidia)
+        #$([ "$gpu_configuration" = optimus ] && echo bumblebee)
+        #$([ "$gpu_configuration" = optimus ] && echo bbswitch)
 #         primus for backend?
 
-        $([ "$has_battery" = yes ] && echo tlp)
-        $([ "$has_battery" = yes ] && [ "$has_wireless" = yes ] && echo tlp-rdw)
+        #$([ "$has_battery" = yes ] && echo tlp)
+        #$([ "$has_battery" = yes ] && [ "$has_wireless" = yes ] && echo tlp-rdw)
 
 # TODO: bluetooth
 #         bluetooth
@@ -549,7 +547,7 @@ setup() {
         download_mirrorlist
         install_pacman_packages
         $([ "$feature_archstrike_repository" = yes ] && echo enable_archstrike_repository)
-        install_aur_packages
+        #install_aur_packages
         generate_fstab
         generate_locale
         install_bootloader
@@ -573,7 +571,6 @@ setup() {
     whiptail --title 'Show log' --yesno "Show installation log?" 0 0 3>&1 1>&2 2>&3
 
     [ $? = 0 ] && whiptail --title 'archer.log' --textbox archer.log 0 0 3>&1 1>&2 2>&3
-
 }
 
 setup
