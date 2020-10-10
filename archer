@@ -101,8 +101,8 @@ get_drive() {
         --menu 'Select drive:' \
         0 0 0 \
         $(
-            lsblk -lno NAME,SIZE,TYPE |
-            awk '/disk/ { print "/dev/"$1, $2 }'
+            lsblk -lno PATH,SIZE,MODEL,TYPE |
+            awk '/disk/ { print $1, $2"<"$3">" }'
         ) \
         3>&1 1>&2 2>&3
 }
