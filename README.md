@@ -12,6 +12,8 @@ Automated Arch Linux install script for brainlets
 - `curl -s roliboy.ml/archer | bash`
 - done
 
+disclaimer: it will nuke your entire drive
+
 ### additional steps
 
 - pray to /g/ everything is working

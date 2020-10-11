@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# CWO: supress stderr from pacstrap
-# CWO: improve aur debug log
+# CWO: package caching / proxy server
+# TODO: supress stderr from pacstrap
+# TODO: improve aur debug log
 
 set_terminal_colors() {
     setterm -blank 0 -powersave off
@@ -181,6 +182,8 @@ get_optional_features() {
 }
 
 
+#TODO: in retrospect, that awk regex looks horrible
+# i will replace it
 create_partitions() {
     for partition in $(parted -s $selected_drive print | awk '/^ / {print $1}' | tac); do
         umount -l ${selected_drive}$partition > /dev/null 2>&1
@@ -203,8 +206,8 @@ create_partitions() {
     mount ${selected_drive}1 /mnt/boot
 
 
-    echo "[DEBUG] boot partition created and mounted: ->$([ -n "$(findmnt -o TARGET,FSTYPE ${selected_drive}1 | grep /boot | grep vfat)" ] && echo yes || echo no)<-" >> archer.log
-    echo "[DEBUG] root partition created and mounted: ->$([ -n "$(findmnt -o TARGET,FSTYPE ${selected_drive}2 | grep / | grep ext4)" ] && echo yes || echo no)<-" >> archer.log
+    echo "[DEBUG]: boot partition created and mounted: ->$([ -n "$(findmnt -o TARGET,FSTYPE ${selected_drive}1 | grep /boot | grep vfat)" ] && echo yes || echo no)<-" >> archer.log
+    echo "[DEBUG]: root partition created and mounted: ->$([ -n "$(findmnt -o TARGET,FSTYPE ${selected_drive}2 | grep / | grep ext4)" ] && echo yes || echo no)<-" >> archer.log
 }
 
 enable_ntp() {
@@ -260,7 +263,8 @@ install_pacman_packages() {
 
     for package in ${packages[@]}; do echo "[DEBUG]: package: ->$package<-" >> archer.log; done
 
-    # TODO: improve post-transaction hooks feedback
+    # capitalize "checking"  lines
+    # remove "..." from post-transaction hooks
     pacstrap /mnt ${packages[@]} | awk '
         /^:: Synchronizing package databases\.\.\.$/ {
             print "XXX\n0\nSynchronizing package databases\nXXX"
@@ -281,6 +285,10 @@ install_pacman_packages() {
         }
         /^:: Running post-transaction hooks\.\.\.$/ {
             print "XXX\n0\nRunning post-transaction hooks\nXXX"
+        }
+        /^\([ 0-9]+\/[0-9]+\)/ {
+            progress = int(int(substr($0, 2, index($0, "/") - 2)) * 100 / int(substr($0, index($0, "/") + 1, index($0, ")") - index($0, "/") - 1)));
+            print "XXX\n"progress"\n"substr($0, index($0, ")") + 2)"\nXXX"
         }
         {
             fflush(stdout)
