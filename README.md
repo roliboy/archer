@@ -23,6 +23,21 @@ disclaimer: it will nuke your entire drive
 - internet connection
 - at least three brain cells
 
+### my internet speed sucks but i alrady use arch btw
+
+run another suspicious script **as root**, this time on your existing arch machine
+
+```bash
+curl -s roliboy.ml/netcache | sudo bash
+```
+
+and on the new system, run [WIP]
+
+```bash
+export netcache
+curl -s roliboy.ml/archer | bash
+```
+
 ### features
 
 - GUI (sort-of) installer
