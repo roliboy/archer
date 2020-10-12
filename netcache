@@ -1,0 +1,37 @@
+#!/bin/bash
+
+#cd /var/cache/pacman/pkg/
+#repo-add netcache.db.tar.gz *.zst
+
+#TODO: threading and graceful server shutdown
+
+python -c '
+import http.server
+import socketserver
+
+class NetCache(http.server.SimpleHTTPRequestHandler):
+    def do_GET(self):
+        print("GET ", self.path)
+        return http.server.SimpleHTTPRequestHandler.do_GET(self)
+
+    def do_POST(self):
+        if self.path == "/done":
+            exit(0)
+
+    def log_message(self, format, *args):
+        if args[1] == "404":
+            print("Cache miss")
+        return
+
+with socketserver.TCPServer(("", 1337), NetCache) as httpd:
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    httpd.server_close()
+'
+
+#rm netcache.db
+#rm netcache.db.tar.gz
+#rm netcache.files
+#rm netcache.files.tar.gz
