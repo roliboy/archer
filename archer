@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # CWO: package caching / proxy server
-# TODO: supress stderr from pacstrap
+# TODO: supress stderr from pacman-key in archstrike
 # TODO: improve aur debug log
 
 set_terminal_colors() {
@@ -174,12 +174,20 @@ get_desktop_environment() {
         3>&1 1>&2 2>&3
 }
 
+#TODO: maybe place netcache option in separate dialog
 get_optional_features() {
     whiptail --title 'Optional features' --checklist 'Select optional features' --separate-output 0 $(expr $(tput cols) \* 3 / 4) 0 \
-        'Autologin' 'Get automatically logged in on boot' ON \
-        'Archstrike repository' 'Enable Archstrike repository (pentesting tools)' ON \
+        'netcache' 'Use netcache during installation' OFF \
+        'autologin' 'Get automatically logged in on boot' ON \
+        'archstrike repository' 'Enable Archstrike repository (pentesting tools)' ON \
         3>&1 1>&2 2>&3
 }
+
+#EXPERIMENTAL------
+get_netcache_ip() {
+    whiptail --title 'Netcache IP' --inputbox "Enter the IP address of the machine running the netcache server: " 0 0 3>&1 1>&2 2>&3
+}
+#EXPERIMENTAL------
 
 
 #TODO: in retrospect, that awk regex looks horrible
@@ -296,7 +304,15 @@ install_pacman_packages() {
     '
 }
 
+#EXPERIMENTAL------
+enable_netcache() {
+    sed -i "/\[core\]/i[netcache]\nSigLevel = Optional TrustAll\nServer = http://$netcache_ip:1337/\n" /etc/pacman.conf
+    #TODO: debug check
+}
+#EXPERIMENTAL------
+
 enable_archstrike_repository() {
+    echo '' >> /mnt/etc/pacman.conf
     echo '[archstrike]' >> /mnt/etc/pacman.conf
     echo 'Server = https://mirror.archstrike.org/$arch/$repo' >> /mnt/etc/pacman.conf
 
@@ -522,9 +538,15 @@ setup() {
     optional_features="$(get_optional_features)"
     # echo $optional_features
 
-    feature_autologin=$([ -n "$(grep 'Autologin' <<< $optional_features)" ] && echo yes || echo no)
+
+    #EXPERIMENTAL-------
+    feature_netcache=$([ -n "$(grep 'netcache' <<< $optional_features)" ] && echo yes || echo no)
+    [ $feature_netcache = yes ] && netcache_ip="$(get_netcache_ip)"
+    #EXPERIMENTAL-------
+
+    feature_autologin=$([ -n "$(grep 'autologin' <<< $optional_features)" ] && echo yes || echo no)
     echo "[DEBUG]: Enable autologin: ->$feature_autologin<-" >> archer.log
-    feature_archstrike_repository=$([ -n "$(grep 'Archstrike repository' <<< $optional_features)" ] && echo yes || echo no)
+    feature_archstrike_repository=$([ -n "$(grep 'archstrike repository' <<< $optional_features)" ] && echo yes || echo no)
     echo "[DEBUG]: Enable Archstrike repository: ->$feature_archstrike_repository<-" >> archer.log
 
 
@@ -553,6 +575,9 @@ setup() {
         create_partitions
         enable_ntp
         download_mirrorlist
+        #EXPERIMENTAL------
+        $([ "$feature_netcache" = yes ] && echo enable_netcache)
+        #EXPERIMENTAL------
         install_pacman_packages
         $([ "$feature_archstrike_repository" = yes ] && echo enable_archstrike_repository)
         #install_aur_packages
