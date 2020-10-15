@@ -31,12 +31,8 @@ run another suspicious script **as root**, this time on your existing arch machi
 curl -s roliboy.ml/netcache | sudo bash
 ```
 
-and on the new system, run [WIP]
-
-```bash
-export netcache
-curl -s roliboy.ml/archer | bash
-```
+and on the new system tick the use netcache box on the additional features dialog
+you will be asked to enter the ip address of the machine on which the netcache script is running
 
 ### features
 
