@@ -42,9 +42,7 @@ class NetCache(http.server.SimpleHTTPRequestHandler):
         return http.server.SimpleHTTPRequestHandler.do_GET(self)
 
     def log_message(self, format, *args):
-        if args[1] == "404":
-            print("Cache miss")
-        return
+        pass
 
 with socketserver.TCPServer(("", 1337), NetCache) as httpd:
     try:

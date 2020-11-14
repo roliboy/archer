@@ -179,12 +179,29 @@ get_desktop_environment() {
         3>&1 1>&2 2>&3
 }
 
+#TODO: update details
+get_login_shell() {
+    whiptail --title 'Shell' --radiolist 'Select user'\''s default shell' 0 $(expr $(tput cols) \* 3 / 4) 0 \
+        'bash' 'Bourne Again Shell, default shell of many distributions' ON \
+        'fish' 'Friendly Interactive Shell, user-friendly and easily customizable' OFF \
+        'zsh' 'Z Shell, bash-compatible with spelling correction, approximate completion and recursive path expansion'  OFF \
+        3>&1 1>&2 2>&3
+}
+
+#TODO: more backends
+get_optimus_backend() {
+    whiptail --title 'Optimus' --radiolist 'Select backend for GPU switching' 0 $(expr $(tput cols) \* 3 / 4) 0 \
+        'bumblebee' 'allows running selected applications on the dedicated GPU while using integrated graphics for everything else (sacrificing some performance)' ON \
+        'optimus-manager' 'switch cards with a single command, achieving maximum performance out of the dedicated GPU (requires X server restart after switch)'  OFF \
+        3>&1 1>&2 2>&3
+}
+
 #TODO: maybe place netcache option in separate dialog
 get_optional_features() {
     whiptail --title 'Optional features' --checklist 'Select optional features' --separate-output 0 $(expr $(tput cols) \* 3 / 4) 0 \
         'netcache' 'Use netcache during installation' OFF \
-        'autologin' 'Get automatically logged in on boot' ON \
-        'archstrike repository' 'Enable Archstrike repository (pentesting tools)' ON \
+        'autologin' 'Get automatically logged in on boot' OFF \
+        'archstrike repository' 'Enable Archstrike repository (pentesting tools)' OFF \
         3>&1 1>&2 2>&3
 }
 
@@ -261,6 +278,8 @@ install_pacman_packages() {
         #$([ "$gpu_configuration" = optimus ] && echo bbswitch)
 #         primus for backend?
 
+        #condition guards
+        $login_shell
         #$([ "$has_battery" = yes ] && echo tlp)
         #$([ "$has_battery" = yes ] && [ "$has_wireless" = yes ] && echo tlp-rdw)
 
@@ -310,7 +329,8 @@ install_pacman_packages() {
 
 #EXPERIMENTAL------
 enable_netcache() {
-    #siglevel = PackageRequired
+    #temporary fix
+    [ -n "$(grep netcache /etc/pacman.conf)" ] && return
     sed -i "/\[core\]/i[netcache]\nSigLevel = Optional TrustAll\nServer = http://$netcache_ip:1337/\n" /etc/pacman.conf
     #TODO: debug check
 }
@@ -470,7 +490,7 @@ create_user() {
         useradd $username -m -g $username -G wheel && \
         yes $password | passwd $username > /dev/null 2>&1 && \
         chown -R $username:$username /home/$username && \
-        usermod --shell /bin/bash $username"
+        usermod --shell /bin/$login_shell $username"
 
 
     # TODO: separate function
@@ -539,6 +559,13 @@ setup() {
 
     desktop_environment="$(get_desktop_environment)"
     echo "[DEBUG]: DE/WM: ->$desktop_environment<-" >> archer.log
+
+    login_shell="$(get_login_shell)"
+    echo "[DEBUG]: login shell: ->$login_shell<-" >> archer.log
+
+
+    [ "$gpu_configuration" = optimus ] && optimus_backend="$(get_optimus_backend)"
+    [ "$gpu_configuration" = optimus ] && echo "[DEBUG]: optimus backend: ->$optimus_backend<-" >> archer.log
 
     optional_features="$(get_optional_features)"
     # echo $optional_features
