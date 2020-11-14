@@ -1,9 +1,34 @@
 #!/bin/bash
 
-#cd /var/cache/pacman/pkg/
-#repo-add netcache.db.tar.gz *.zst
+cd /var/cache/pacman/pkg/
+
+declare -A package_versions
+declare -A package_files
+
+echo loading package files
+total_packages="$(ls *.pkg.tar.zst | wc -l)"
+echo "0/$total_packages"
+for package_file in *.pkg.tar.zst; do
+    echo -ne "\033[1A\033[K"
+    i="$(expr $i + 1)"
+    echo "$i/$total_packages"
+    package_size="$(du $package_file | awk '{print $1}')"
+    [ "$package_size" -lt 1000 ] && continue
+    package_name="$(pacman -Qip $package_file | grep Name | awk -F' : ' '{print $NF}')"
+    package_version="$(pacman -Qip $package_file | grep Version | awk -F' : ' '{print $NF}')"
+    if [[ "$package_version" > "${package_versions[$package_name]}" ]]; then
+        package_versions[$package_name]="$package_version"
+        package_files[$package_name]="$package_file"
+    fi
+done
+
+for package in "${package_files[@]}"; do
+    repo-add netcache.db.tar.gz "$package"
+done
 
 #TODO: threading and graceful server shutdown
+
+echo 'Starting server...'
 
 python -c '
 import http.server

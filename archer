@@ -1,8 +1,13 @@
 #!/bin/bash
 
 # CWO: package caching / proxy server
+# TODO: shell choices
+# TODO: additional packages / aur packages dialog
+# TODO: add netcache status to logs
+# TODO: send shutdown signal to netcache
 # TODO: supress stderr from pacman-key in archstrike
 # TODO: improve aur debug log
+# TODO: revert netcache changes after install (pacman.conf backup?)
 
 set_terminal_colors() {
     setterm -blank 0 -powersave off
@@ -190,10 +195,8 @@ get_netcache_ip() {
 #EXPERIMENTAL------
 
 
-#TODO: in retrospect, that awk regex looks horrible
-# i will replace it
 create_partitions() {
-    for partition in $(parted -s $selected_drive print | awk '/^ / {print $1}' | tac); do
+    for partition in $(parted -s $selected_drive print 2>/dev/null | awk '/^ / {print $1}' | tac); do
         umount -l ${selected_drive}$partition > /dev/null 2>&1
         parted -s $selected_drive rm $partition
 
@@ -218,6 +221,7 @@ create_partitions() {
     echo "[DEBUG]: root partition created and mounted: ->$([ -n "$(findmnt -o TARGET,FSTYPE ${selected_drive}2 | grep / | grep ext4)" ] && echo yes || echo no)<-" >> archer.log
 }
 
+#TODO: :thinking_face:
 enable_ntp() {
     timedatectl set-ntp true
 
@@ -243,8 +247,8 @@ install_pacman_packages() {
         make
         patch
 
-        #linux
-        #linux-firmware
+        linux
+        linux-firmware
         #$([ "$cpu_vendor" = intel ] && echo intel-ucode)
         #$([ "$cpu_vendor" = amd ] && echo amd-ucode)
 
@@ -306,6 +310,7 @@ install_pacman_packages() {
 
 #EXPERIMENTAL------
 enable_netcache() {
+    #siglevel = PackageRequired
     sed -i "/\[core\]/i[netcache]\nSigLevel = Optional TrustAll\nServer = http://$netcache_ip:1337/\n" /etc/pacman.conf
     #TODO: debug check
 }
@@ -319,13 +324,13 @@ enable_archstrike_repository() {
     arch-chroot /mnt /bin/bash <<< "pacman -Syy && \
         pacman-key --init && \
         curl -sO https://archstrike.org/keyfile.asc && \
-        pacman-key --add keyfile.asc && \
+        pacman-key --add keyfile.asc > /dev/null 2>&1 && \
         rm keyfile.asc && \
-        pacman-key --lsign-key 9D5F1C051D146843CDA4858BDE64825E7CBC0D51 && \
-        pacman -S archstrike-keyring && \
-        pacman -S archstrike-mirrorlist && \
-        sed -i '/mirror\.archstrike\.org/c\Include = /etc/pacman.d/archstrike-mirrorlist' /mnt/etc/pacman.conf && \
-        pacman -Syy"
+        pacman-key --lsign-key 9D5F1C051D146843CDA4858BDE64825E7CBC0D51 > /dev/null 2>&1 && \
+        pacman -Sy archstrike-keyring --noconfirm > /dev/null 2>&1 && \
+        pacman -Sy archstrike-mirrorlist --noconfirm > /dev/null 2>&1 && \
+        sed -i '/mirror\.archstrike\.org/c\Include = /etc/pacman.d/archstrike-mirrorlist' /etc/pacman.conf && \
+        pacman -Syy > /dev/null 2>&1"
 }
 
 install_aur_packages() {
@@ -364,7 +369,7 @@ generate_locale() {
     arch-chroot /mnt /bin/bash <<< "sed -i '/^#$locale/s/^#//' /etc/locale.gen && \
         locale-gen > /dev/null 2>&1 && \
         echo 'LANG=$locale' > /etc/locale.conf"
-
+#TODO: echo on live root
     echo "[DEBUG]: locale generated: ->$([ -n "$(grep $locale /mnt/etc/locale.conf)" ] && echo yes || echo no)<-" >> archer.log
 }
 
