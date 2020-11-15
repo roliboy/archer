@@ -1,13 +1,11 @@
 #!/bin/bash
 
-# CWO: package caching / proxy server
-# TODO: shell choices
-# TODO: additional packages / aur packages dialog
-# TODO: add netcache status to logs
+# TODO: hide output from aur package install
+# TODO: add required packages from base-devel to pacstrap if installing aur packages
+# TODO: do something about free/nonfree driver options for gpu
 # TODO: send shutdown signal to netcache
-# TODO: supress stderr from pacman-key in archstrike
 # TODO: improve aur debug log
-# TODO: revert netcache changes after install (pacman.conf backup?)
+# TODO: backup and restore every modified file on system
 
 set_terminal_colors() {
     setterm -blank 0 -powersave off
@@ -59,6 +57,7 @@ set_newt_colors() {
 }
 
 
+
 detect_boot_mode() {
     [ -d /sys/firmware/efi/efivars ] && echo UEFI || echo BIOS
 }
@@ -75,6 +74,8 @@ detect_gpu_configuration() {
     [ -n "$(lspci | grep 3D | grep -i amd)" ] && local gfx_accelerator=amd
     [ -n "$(lspci | grep 3D | grep -i nvidia)" ] && local gfx_accelerator=nvidia
 
+    #TODO: experiment with different amd configurations
+    [ "$vga_controller" = amd ] && local configuration=amd
     [ "$vga_controller" = intel ] && local configuration=intel
     [ "$vga_controller" = nvidia ] && local configuration=nvidia
     [ "$vga_controller" = intel ] && [ "$gfx_accelerator" = nvidia ] && local configuration=optimus
@@ -90,7 +91,6 @@ detect_wireless() {
     [ -n "$(lspci | grep -i network | grep -i 'wireless\|WLAN\|wifi\|802\.11')" ] && echo yes || echo no
 }
 
-# experimental
 detect_bluetooth() {
     [ -n "$(lsusb | grep -i bluetooth)" ] && echo yes && return
     [ -n "$(dmesg | grep -i bluetooth)" ] && echo yes || echo no
@@ -162,7 +162,7 @@ get_password() {
 }
 
 get_desktop_environment() {
-    whiptail --title 'DE/WM' --radiolist 'Select desktop environment / window manager' 0 $(expr $(tput cols) \* 3 / 4) 0 \
+    whiptail --title 'DE/WM' --radiolist 'Select desktop environment / window manager:' 0 $(expr $(tput cols) \* 3 / 4) 0 \
         'bspwm' 'Tiling window manager that represents windows as the leaves of a full binary tree' OFF \
         'Budgie' 'Desktop environment designed with the modern user in mind, that focuses on simplicity and elegance' OFF \
         'Cinnamon' 'Combines a traditional desktop layout with modern graphical effects' OFF \
@@ -170,7 +170,7 @@ get_desktop_environment() {
         'dwm' 'extremely lightweight and fast tiling WM, optimizing the environment for the task being performed' OFF \
         'GNOME' 'Attractive, intuitive and extensible desktop with a modern look' OFF \
         'i3' 'Tiling window manager primarily targeted at developers and advanced users' OFF \
-        'KDE Plasma' 'Modern and polished, highly customizable and extremely lightweight' ON \
+        'KDE Plasma' 'Modern and polished, highly customizable and lightweight' ON \
         'LXDE' 'Lightweight, fast and energy-saving desktop environment with a modern interface' OFF \
         'LXQt' 'Modular, blazing-fast and user-friendly desktop environment' OFF \
         'MATE' 'Intuitive and attractive, preserving a traditional desktop experience' OFF \
@@ -181,7 +181,7 @@ get_desktop_environment() {
 
 #TODO: update details
 get_login_shell() {
-    whiptail --title 'Shell' --radiolist 'Select user'\''s default shell' 0 $(expr $(tput cols) \* 3 / 4) 0 \
+    whiptail --title 'Shell' --radiolist 'Select user'\''s default shell:' 0 $(expr $(tput cols) \* 3 / 4) 0 \
         'bash' 'Bourne Again Shell, default shell of many distributions' ON \
         'fish' 'Friendly Interactive Shell, user-friendly and easily customizable' OFF \
         'zsh' 'Z Shell, bash-compatible with spelling correction, approximate completion and recursive path expansion'  OFF \
@@ -190,26 +190,30 @@ get_login_shell() {
 
 #TODO: more backends
 get_optimus_backend() {
-    whiptail --title 'Optimus' --radiolist 'Select backend for GPU switching' 0 $(expr $(tput cols) \* 3 / 4) 0 \
+    whiptail --title 'Optimus' --radiolist 'Select backend for GPU switching:' 0 $(expr $(tput cols) \* 3 / 4) 0 \
         'bumblebee' 'allows running selected applications on the dedicated GPU while using integrated graphics for everything else (sacrificing some performance)' ON \
         'optimus-manager' 'switch cards with a single command, achieving maximum performance out of the dedicated GPU (requires X server restart after switch)'  OFF \
+        'none' 'no backed or nvidia driver will be installed' OFF \
         3>&1 1>&2 2>&3
 }
 
-#TODO: maybe place netcache option in separate dialog
 get_optional_features() {
     whiptail --title 'Optional features' --checklist 'Select optional features' --separate-output 0 $(expr $(tput cols) \* 3 / 4) 0 \
         'netcache' 'Use netcache during installation' OFF \
         'autologin' 'Get automatically logged in on boot' OFF \
         'archstrike repository' 'Enable Archstrike repository (pentesting tools)' OFF \
+        'add extra packages' 'Install additional packages from official repositories or AUR' OFF \
         3>&1 1>&2 2>&3
 }
 
-#EXPERIMENTAL------
 get_netcache_ip() {
     whiptail --title 'Netcache IP' --inputbox "Enter the IP address of the machine running the netcache server: " 0 0 3>&1 1>&2 2>&3
 }
-#EXPERIMENTAL------
+
+get_extra_packages() {
+    whiptail --title 'Extra packages' --inputbox "Enter space separated package names: " 0 $(expr $(tput cols) \* 3 / 4) 3>&1 1>&2 2>&3
+}
+
 
 
 create_partitions() {
@@ -263,23 +267,34 @@ install_pacman_packages() {
         sudo
         make
         patch
+#         TODO: condition?
+        fakeroot
+        binutils
 
-        linux
-        linux-firmware
+#         linux
+#         linux-firmware
         #$([ "$cpu_vendor" = intel ] && echo intel-ucode)
         #$([ "$cpu_vendor" = amd ] && echo amd-ucode)
 
         #networkmanager #dependency of plasma
 
-        #$([ "$gpu_configuration" = nvidia ] && echo nvidia)
+        #TODO: do something about free/nonfree driver selection for nvidia
+        $([ "$gpu_configuration" = nvidia ] && echo nvidia)
 
-        #$([ "$gpu_configuration" = optimus ] && echo nvidia)
-        #$([ "$gpu_configuration" = optimus ] && echo bumblebee)
-        #$([ "$gpu_configuration" = optimus ] && echo bbswitch)
-#         primus for backend?
+        $([ "$optimus_backend" = bumblebee ] && echo nvidia)
+        $([ "$optimus_backend" = bumblebee ] && echo bbswitch)
+        $([ "$optimus_backend" = bumblebee ] && echo bumblebee)
 
-        #condition guards
-        $login_shell
+        $([ "$optimus_backend" = optimus-manager ] && echo nvidia)
+        $([ "$optimus_backend" = optimus-manager ] && echo bbswitch)
+
+#        $([ "$optimus_backend" = optimus-manager ] && echo optimus-manager) AUR package
+
+
+        $([ "$login_shell" = bash ] && echo bash)
+        $([ "$login_shell" = fish ] && echo fish)
+        $([ "$login_shell" = zsh ] && echo zsh)
+
         #$([ "$has_battery" = yes ] && echo tlp)
         #$([ "$has_battery" = yes ] && [ "$has_wireless" = yes ] && echo tlp-rdw)
 
@@ -290,6 +305,8 @@ install_pacman_packages() {
         #plasma
         #konsole
         #dolphin
+        
+        $([ "$feature_extra_packages" = yes ] && echo "${extra_packages_official[@]}")
     )
 
     for package in ${packages[@]}; do echo "[DEBUG]: package: ->$package<-" >> archer.log; done
@@ -327,14 +344,13 @@ install_pacman_packages() {
     '
 }
 
-#EXPERIMENTAL------
 enable_netcache() {
     #temporary fix
+    #TODO: backup pacman.conf
     [ -n "$(grep netcache /etc/pacman.conf)" ] && return
     sed -i "/\[core\]/i[netcache]\nSigLevel = Optional TrustAll\nServer = http://$netcache_ip:1337/\n" /etc/pacman.conf
-    #TODO: debug check
+    echo "[DEBUG]: netcache repository added to pacman.conf: ->$([ -n "$(grep netcache /etc/pacman.conf)" ] && echo yes || echo no)<-" >> archer.log
 }
-#EXPERIMENTAL------
 
 enable_archstrike_repository() {
     echo '' >> /mnt/etc/pacman.conf
@@ -351,11 +367,14 @@ enable_archstrike_repository() {
         pacman -Sy archstrike-mirrorlist --noconfirm > /dev/null 2>&1 && \
         sed -i '/mirror\.archstrike\.org/c\Include = /etc/pacman.d/archstrike-mirrorlist' /etc/pacman.conf && \
         pacman -Syy > /dev/null 2>&1"
+
+    echo "[DEBUG]: archstrike repository enabled: ->$([ -n "$(grep archstrike-mirrorlist /mnt/etc/pacman.conf)" ] && echo yes || echo no)<-" >> archer.log
 }
 
 install_aur_packages() {
     local packages=(
-        nerd-fonts-fira-code
+        $([ "$optimus_backend" = optimus-manager ] && echo optimus-manager)
+        $([ "$feature_extra_packages" = yes ] && echo "${extra_packages_aur[@]}")
     )
 
     for package in ${packages[@]}; do echo "[DEBUG]: AUR package: ->$package<-" >> archer.log; done
@@ -364,7 +383,7 @@ install_aur_packages() {
 
     for package in ${packages[@]}; do
         arch-chroot /mnt /bin/bash <<< "cd /tmp && \
-            curl -sO https://aur.archlinux.org/cgit/aur.git/snapshot/$package.tar.gz
+            curl -sO https://aur.archlinux.org/cgit/aur.git/snapshot/$package.tar.gz > /dev/null 2>&1
             sudo -u nobody tar xfvz $package.tar.gz && \
             cd $package && \
             sudo -u nobody makepkg -risc --noconfirm && \
@@ -444,7 +463,7 @@ configure_pacman() {
 
 #TODO: modify master file
 configure_tlp() {
-    [ "$gpu_configuration" = optimus ] && \
+    [ "$optimus_backend" = bumblebee ] && \
         echo 'RUNTIME_PM_DRIVER_BLACKLIST="nouveau nvidia"' > /mnt/etc/tlp.d/10-driver-blacklist.conf
     # TODO: update this after tlp config will be migrated to main file
     echo "[DEBUG]: tlp configured: ->$([ -n "$(grep nvidia /mnt/etc/tlp.d/10-driver-blacklist.conf)" ] && echo yes || echo no)<-" >> archer.log
@@ -473,8 +492,10 @@ enable_services() {
             systemctl mask systemd-rfkill.socket > /dev/null 2>&1"
 
     [ "$has_ssd" = yes ] && arch-chroot /mnt /bin/bash <<< "systemctl enable fstrim.timer > /dev/null 2>&1"
-    [ "$gpu_configuration" = optimus ] && arch-chroot /mnt /bin/bash <<< "systemctl enable bumblebeed.service > /dev/null 2>&1"
-#       enable sddm
+    [ "$optimus_backend" = optimus ] && arch-chroot /mnt /bin/bash <<< "systemctl enable bumblebeed.service > /dev/null 2>&1"
+    [ "$optimus_backend" = optimus-manager ] && arch-chroot /mnt /bin/bash <<< "systemctl enable optimus-manager.service > /dev/null 2>&1"
+
+    [ "$desktop_environment" = 'KDE Plasma' ] && arch-chroot /mnt /bin/bash <<< "systemctl enable sddm.service"
 #       bluetooth
 }
 
@@ -484,7 +505,6 @@ set_root_password() {
     echo "[DEBUG]: password set for root: ->$([ -n "$(grep root /mnt/etc/shadow | grep '\$6\$')" ] && echo yes || echo no)<-" >> archer.log
 }
 
-# TODO: shell choices
 create_user() {
     arch-chroot /mnt /bin/bash <<< "groupadd $username && \
         useradd $username -m -g $username -G wheel && \
@@ -495,7 +515,7 @@ create_user() {
 
     # TODO: separate function
     sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^# //' /mnt/etc/sudoers
-    [ "$gpu_configuration" = optimus ] && \
+    [ "$optimus_backend" = bumblebee ] && \
         arch-chroot /mnt /bin/bash <<< "gpasswd -a $username bumblebee > /dev/null"
 
     # TODO: check for other properties
@@ -504,18 +524,17 @@ create_user() {
 
 enable_autologin() {
     # TODO: handle different display managers
-    # TODO: if statements / reduce line size
 
-
-    [ "$desktop_environment" = 'KDE Plasma' ] && echo -e "[Autologin]\nUser=$username\nSession=plasma.desktop" > /mnt/etc/sddm.conf.d/autologin.conf
+    [ "$desktop_environment" = 'KDE Plasma' ] && \
+        echo -e "[Autologin]\nUser=$username\nSession=plasma.desktop" > /mnt/etc/sddm.conf.d/autologin.conf
 
     # mkdir /mnt/etc/systemd/getty@tty1.service.d ?
-    [ "$desktop_environment" = 'None' ] && echo -e "[Service]\nExecStart=\nExecStart=-/usr/bin/agetty --autologin $username --noclear %I \$TERM" > /mnt/etc/system/systemd/getty@tty1.service.d/override.conf
+    [ "$desktop_environment" = 'None' ] && \
+        echo -e "[Service]\nExecStart=\nExecStart=-/usr/bin/agetty --autologin $username --noclear %I \$TERM" > /mnt/etc/system/systemd/getty@tty1.service.d/override.conf
 
     # TODO: debug check
 }
 
-# TODO: interface size
 setup() {
     echo "[LOG]" > archer.log
 
@@ -564,6 +583,7 @@ setup() {
     echo "[DEBUG]: login shell: ->$login_shell<-" >> archer.log
 
 
+    #todo: change this?
     [ "$gpu_configuration" = optimus ] && optimus_backend="$(get_optimus_backend)"
     [ "$gpu_configuration" = optimus ] && echo "[DEBUG]: optimus backend: ->$optimus_backend<-" >> archer.log
 
@@ -571,15 +591,37 @@ setup() {
     # echo $optional_features
 
 
-    #EXPERIMENTAL-------
     feature_netcache=$([ -n "$(grep 'netcache' <<< $optional_features)" ] && echo yes || echo no)
+    echo "[DEBUG]: Enable netcache: ->$feature_netcache<-" >> archer.log
     [ $feature_netcache = yes ] && netcache_ip="$(get_netcache_ip)"
-    #EXPERIMENTAL-------
 
     feature_autologin=$([ -n "$(grep 'autologin' <<< $optional_features)" ] && echo yes || echo no)
     echo "[DEBUG]: Enable autologin: ->$feature_autologin<-" >> archer.log
+
     feature_archstrike_repository=$([ -n "$(grep 'archstrike repository' <<< $optional_features)" ] && echo yes || echo no)
     echo "[DEBUG]: Enable Archstrike repository: ->$feature_archstrike_repository<-" >> archer.log
+    
+    feature_extra_packages=$([ -n "$(grep 'add extra packages' <<< $optional_features)" ] && echo yes || echo no)
+    echo "[DEBUG]: Enable Extra Packages: ->$feature_extra_packages<-" >> archer.log
+    [ $feature_extra_packages = yes ] && extra_packages="$(get_extra_packages)"
+    
+    #TODO: separate function
+    extra_packages_official=()
+    extra_packages_aur=()
+    pacman -Sy > /dev/null 2>&1
+    for package in $extra_packages; do
+        if [ "$(pacman -Ss ^$package$ | wc -l)" != 0 ]; then
+            extra_packages_official+=($package)
+            echo "[DEBUG]: Extra package official: ->$package<-" >> archer.log
+        elif [ -n "$(curl -sI https://aur.archlinux.org/packages/$package/ | head -n1 | grep 200)" ]; then
+            extra_packages_aur+=($package)
+            echo "[DEBUG]: Extra package aur: ->$package<-" >> archer.log
+        else
+            echo "[DEBUG]: Unknown package: ->$package<-" >> archer.log
+        fi
+    done
+    
+    
 
 
     declare -A description
@@ -607,12 +649,10 @@ setup() {
         create_partitions
         enable_ntp
         download_mirrorlist
-        #EXPERIMENTAL------
         $([ "$feature_netcache" = yes ] && echo enable_netcache)
-        #EXPERIMENTAL------
         install_pacman_packages
         $([ "$feature_archstrike_repository" = yes ] && echo enable_archstrike_repository)
-        #install_aur_packages
+        install_aur_packages
         generate_fstab
         generate_locale
         install_bootloader

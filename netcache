@@ -7,11 +7,10 @@ declare -A package_files
 
 echo loading package files
 total_packages="$(ls *.pkg.tar.zst | wc -l)"
-echo "0/$total_packages"
+echo -ne "0/$total_packages"
 for package_file in *.pkg.tar.zst; do
-    echo -ne "\033[1A\033[K"
     i="$(expr $i + 1)"
-    echo "$i/$total_packages"
+    echo -ne "\r$i/$total_packages"
     package_size="$(du $package_file | awk '{print $1}')"
     [ "$package_size" -lt 1000 ] && continue
     package_name="$(pacman -Qip $package_file | grep Name | awk -F' : ' '{print $NF}')"
