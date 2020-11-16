@@ -203,6 +203,7 @@ get_optional_features() {
         'autologin' 'Get automatically logged in on boot' OFF \
         'archstrike repository' 'Enable Archstrike repository (pentesting tools)' OFF \
         'add extra packages' 'Install additional packages from official repositories or AUR' OFF \
+        'bluetooth audio support' 'Add support for bluetooth headphones and speakers' OFF \
         3>&1 1>&2 2>&3
 }
 
@@ -298,8 +299,10 @@ install_pacman_packages() {
         #$([ "$has_battery" = yes ] && echo tlp)
         #$([ "$has_battery" = yes ] && [ "$has_wireless" = yes ] && echo tlp-rdw)
 
+#         TODO: dependencies based on desktop environment
+        $([ "$feature_bluetooth_audio" = yes ] && echo pulseaudio-bluetooth)
+        
 # TODO: bluetooth
-#         bluetooth
 #         pulseaudio-bluez
 # TODO: provide multiple desktop environments
         #plasma
@@ -311,7 +314,6 @@ install_pacman_packages() {
 
     for package in ${packages[@]}; do echo "[DEBUG]: package: ->$package<-" >> archer.log; done
 
-    # capitalize "checking"  lines
     # remove "..." from post-transaction hooks
     pacstrap /mnt ${packages[@]} | awk '
         /^:: Synchronizing package databases\.\.\.$/ {
@@ -325,7 +327,7 @@ install_pacman_packages() {
             print "XXX\n"int(dlindex*100/total)"\nDownloading "substr($2, 1, match($2, /\.pkg\.tar.*/) - 1)"\nXXX"
         }
         /^checking .*\.\.\.$/ {
-            print "XXX\n0\n"substr($0, 1, length($0) - 3)"\nXXX"
+            print "XXX\n0\nC"substr($0, 2, length($0) - 4)"\nXXX"
         }
         /^installing .*\.\.\.$/ {
             insindex++;
@@ -345,7 +347,6 @@ install_pacman_packages() {
 }
 
 enable_netcache() {
-    #temporary fix
     #TODO: backup pacman.conf
     [ -n "$(grep netcache /etc/pacman.conf)" ] && return
     sed -i "/\[core\]/i[netcache]\nSigLevel = Optional TrustAll\nServer = http://$netcache_ip:1337/\n" /etc/pacman.conf
@@ -406,9 +407,9 @@ generate_fstab() {
 
 generate_locale() {
     arch-chroot /mnt /bin/bash <<< "sed -i '/^#$locale/s/^#//' /etc/locale.gen && \
-        locale-gen > /dev/null 2>&1 && \
-        echo 'LANG=$locale' > /etc/locale.conf"
-#TODO: echo on live root
+        locale-gen > /dev/null 2>&1"
+    echo "LANG=$locale" > /mnt/etc/locale.conf
+    
     echo "[DEBUG]: locale generated: ->$([ -n "$(grep $locale /mnt/etc/locale.conf)" ] && echo yes || echo no)<-" >> archer.log
 }
 
@@ -462,10 +463,11 @@ configure_pacman() {
 }
 
 #TODO: modify master file
+#TODO: add auto-cpufreq
 configure_tlp() {
     [ "$optimus_backend" = bumblebee ] && \
         echo 'RUNTIME_PM_DRIVER_BLACKLIST="nouveau nvidia"' > /mnt/etc/tlp.d/10-driver-blacklist.conf
-    # TODO: update this after tlp config will be migrated to main file
+
     echo "[DEBUG]: tlp configured: ->$([ -n "$(grep nvidia /mnt/etc/tlp.d/10-driver-blacklist.conf)" ] && echo yes || echo no)<-" >> archer.log
 }
 
@@ -512,14 +514,17 @@ create_user() {
         chown -R $username:$username /home/$username && \
         usermod --shell /bin/$login_shell $username"
 
-
-    # TODO: separate function
-    sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^# //' /mnt/etc/sudoers
     [ "$optimus_backend" = bumblebee ] && \
         arch-chroot /mnt /bin/bash <<< "gpasswd -a $username bumblebee > /dev/null"
 
     # TODO: check for other properties
     echo "[DEBUG]: user created: ->$([ -n "$(grep $username /mnt/etc/shadow | grep '\$6\$')" ] && echo yes || echo no)<-" >> archer.log
+}
+
+enable_passwordless_sudo() {
+    sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^# //' /mnt/etc/sudoers
+    
+#     TODO: debug check
 }
 
 enable_autologin() {
@@ -532,6 +537,8 @@ enable_autologin() {
     [ "$desktop_environment" = 'None' ] && \
         echo -e "[Service]\nExecStart=\nExecStart=-/usr/bin/agetty --autologin $username --noclear %I \$TERM" > /mnt/etc/system/systemd/getty@tty1.service.d/override.conf
 
+    [ "$desktop_environment" = 'KDE Plasma' ] && \
+        echo "[DEBUG]: autologin enabled: ->$([ -n "$(grep $username /mnt/etc/sddm.conf.d/autologin.conf)" ] && echo yes || echo no)<-" >> archer.log
     # TODO: debug check
 }
 
@@ -592,18 +599,21 @@ setup() {
 
 
     feature_netcache=$([ -n "$(grep 'netcache' <<< $optional_features)" ] && echo yes || echo no)
-    echo "[DEBUG]: Enable netcache: ->$feature_netcache<-" >> archer.log
+    echo "[DEBUG]: enable netcache: ->$feature_netcache<-" >> archer.log
     [ $feature_netcache = yes ] && netcache_ip="$(get_netcache_ip)"
 
     feature_autologin=$([ -n "$(grep 'autologin' <<< $optional_features)" ] && echo yes || echo no)
-    echo "[DEBUG]: Enable autologin: ->$feature_autologin<-" >> archer.log
+    echo "[DEBUG]: enable autologin: ->$feature_autologin<-" >> archer.log
 
     feature_archstrike_repository=$([ -n "$(grep 'archstrike repository' <<< $optional_features)" ] && echo yes || echo no)
-    echo "[DEBUG]: Enable Archstrike repository: ->$feature_archstrike_repository<-" >> archer.log
+    echo "[DEBUG]: enable Archstrike repository: ->$feature_archstrike_repository<-" >> archer.log
     
     feature_extra_packages=$([ -n "$(grep 'add extra packages' <<< $optional_features)" ] && echo yes || echo no)
-    echo "[DEBUG]: Enable Extra Packages: ->$feature_extra_packages<-" >> archer.log
+    echo "[DEBUG]: enable Extra Packages: ->$feature_extra_packages<-" >> archer.log
     [ $feature_extra_packages = yes ] && extra_packages="$(get_extra_packages)"
+    
+    feature_bluetooth_audio=$([ -n "$(grep 'bluetooth audio support' <<< $optional_features)" ] && echo yes || echo no)
+    echo "[DEBUG]: enable Bluetooth Audio: ->$feature_bluetooth_audio<-" >> archer.log
     
     #TODO: separate function
     extra_packages_official=()
@@ -612,12 +622,12 @@ setup() {
     for package in $extra_packages; do
         if [ "$(pacman -Ss ^$package$ | wc -l)" != 0 ]; then
             extra_packages_official+=($package)
-            echo "[DEBUG]: Extra package official: ->$package<-" >> archer.log
+            echo "[DEBUG]: extra package official: ->$package<-" >> archer.log
         elif [ -n "$(curl -sI https://aur.archlinux.org/packages/$package/ | head -n1 | grep 200)" ]; then
             extra_packages_aur+=($package)
-            echo "[DEBUG]: Extra package aur: ->$package<-" >> archer.log
+            echo "[DEBUG]: extra package aur: ->$package<-" >> archer.log
         else
-            echo "[DEBUG]: Unknown package: ->$package<-" >> archer.log
+            echo "[DEBUG]: unknown package: ->$package<-" >> archer.log
         fi
     done
     
@@ -642,6 +652,7 @@ setup() {
     description[configure_coredump]='Configuring coredump'
     description[set_root_password]='Setting root password'
     description[create_user]="Creating user $username"
+    description[enable_passwordless_sudo]="Enable pasworrdless sudo for wheel group"
     description[enable_autologin]="Enabling autologin for $username"
 
 
@@ -664,6 +675,7 @@ setup() {
         configure_coredump
         set_root_password
         create_user
+        enable_passwordless_sudo
         $([ "$feature_autologin" = yes ] && echo enable_autologin)
     )
 
