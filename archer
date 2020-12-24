@@ -301,14 +301,14 @@ install_pacman_packages() {
 
 #         TODO: dependencies based on desktop environment
         $([ "$feature_bluetooth_audio" = yes ] && echo pulseaudio-bluetooth)
-        
+
 # TODO: bluetooth
 #         pulseaudio-bluez
 # TODO: provide multiple desktop environments
         #plasma
         #konsole
         #dolphin
-        
+
         $([ "$feature_extra_packages" = yes ] && echo "${extra_packages_official[@]}")
     )
 
@@ -409,7 +409,7 @@ generate_locale() {
     arch-chroot /mnt /bin/bash <<< "sed -i '/^#$locale/s/^#//' /etc/locale.gen && \
         locale-gen > /dev/null 2>&1"
     echo "LANG=$locale" > /mnt/etc/locale.conf
-    
+
     echo "[DEBUG]: locale generated: ->$([ -n "$(grep $locale /mnt/etc/locale.conf)" ] && echo yes || echo no)<-" >> archer.log
 }
 
@@ -523,7 +523,7 @@ create_user() {
 
 enable_passwordless_sudo() {
     sed -i '/%wheel ALL=(ALL) NOPASSWD: ALL/s/^# //' /mnt/etc/sudoers
-    
+
 #     TODO: debug check
 }
 
@@ -607,14 +607,14 @@ setup() {
 
     feature_archstrike_repository=$([ -n "$(grep 'archstrike repository' <<< $optional_features)" ] && echo yes || echo no)
     echo "[DEBUG]: enable Archstrike repository: ->$feature_archstrike_repository<-" >> archer.log
-    
+
     feature_extra_packages=$([ -n "$(grep 'add extra packages' <<< $optional_features)" ] && echo yes || echo no)
     echo "[DEBUG]: enable Extra Packages: ->$feature_extra_packages<-" >> archer.log
     [ $feature_extra_packages = yes ] && extra_packages="$(get_extra_packages)"
-    
+
     feature_bluetooth_audio=$([ -n "$(grep 'bluetooth audio support' <<< $optional_features)" ] && echo yes || echo no)
     echo "[DEBUG]: enable Bluetooth Audio: ->$feature_bluetooth_audio<-" >> archer.log
-    
+
     #TODO: separate function
     extra_packages_official=()
     extra_packages_aur=()
@@ -630,8 +630,8 @@ setup() {
             echo "[DEBUG]: unknown package: ->$package<-" >> archer.log
         fi
     done
-    
-    
+
+
 
 
     declare -A description
