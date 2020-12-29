@@ -1,4 +1,4 @@
-![Archer](https://raw.githubusercontent.com/roliboy/archer/master/archer.png)
+![Archer](/images/archer.png)
 
 # archer
 
@@ -67,3 +67,27 @@ you will be asked to enter the ip address of the machine on which the netcache s
 - detect bluetooth and install bluez (and option for installing bluez-pulseaudio for bluetooth headphones/speakers)
 - multiple backends for gpu switching (currently only bumblebee is supported)
 - add auto-cpufreq for automatic cpu speed and power optimization
+
+### setup
+
+packages required
+- qemu
+- edk2-ovmf
+
+download the official arch iso and create a qemu disk image
+
+```bash
+$ ./test.sh setup
+```
+
+start the emulator with
+
+```bash
+./test.sh run
+```
+
+the guest machine can also be accessed through ssh on port 10022
+
+```bash
+ssh -p 10022 root@localhost
+```
