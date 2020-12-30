@@ -1,5 +1,3 @@
-#!/bin/bash
-
 cd /var/cache/pacman/pkg/
 
 declare -A package_versions

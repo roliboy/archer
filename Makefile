@@ -1,3 +1,6 @@
+.PHONY: all
+all: archer netcache
+
 .PHONY: archer
 archer:
 	@echo '#!/bin/bash' > archer
@@ -14,6 +17,13 @@ archer:
 	@echo '' >> archer
 	@cat src/main.sh >> archer
 	@chmod +x archer
+
+.PHONY: netcache
+netcache:
+	@echo '#!/bin/bash' > netcache
+	@echo '' >> netcache
+	@cat src/netcache.sh >> netcache
+	@chmod +x netcache
 
 .PHONY: test
 test:
@@ -49,8 +59,11 @@ setup:
 .PHONY: clean
 clean:
 	@rm archer
+	@rm netcache
 
 .PHONY: purge
 purge:
+	@rm archer
+	@rm netcache
 	@rm archlinux.iso
 	@rm archlinux.img
