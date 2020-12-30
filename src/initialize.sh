@@ -27,22 +27,15 @@ set_newt_colors() {
         shadow=,black
         title=brightcyan,black
         button=black,cyan
-        actbutton=red,green
         checkbox=cyan,black
         actcheckbox=black,cyan
         entry=cyan,black
-        label=red,green
         listbox=cyan,black
         actlistbox=black,cyan
         textbox=cyan,black
         acttextbox=black,cyan
-        helpline=red,green
-        roottext=red,green
         emptyscale=,black
         fullscale=,cyan
-        disentry=red,green
         compactbutton=cyan,black
-        actsellistbox=black,cyan
-        sellistbox=red,green
-    '
+        actsellistbox=black,cyan'
 }

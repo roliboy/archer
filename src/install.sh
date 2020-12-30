@@ -45,9 +45,8 @@ download_mirrorlist() {
 
 
 enable_netcache() {
-    #TODO: backup pacman.conf
-    [ -n "$(grep netcache /etc/pacman.conf)" ] && return
     sed -i "/\[core\]/i[netcache]\nSigLevel = Optional TrustAll\nServer = http://$netcache_ip:1337/\n" /etc/pacman.conf
+    
     echo "[DEBUG]: netcache repository added to pacman.conf: ->$([ -n "$(grep netcache /etc/pacman.conf)" ] && echo yes || echo no)<-" >> archer.log
 }
 
@@ -57,10 +56,8 @@ install_pacman_packages() {
         sudo
         make
         patch
-#         TODO: condition?
-#        fakeroot
-#        binutils
-
+#         $([ "" ] && echo fakeroot)
+#         $([ "" ] && echo binutils)
 #         linux
 #         linux-firmware
         #$([ "$cpu_vendor" = intel ] && echo intel-ucode)
@@ -68,7 +65,6 @@ install_pacman_packages() {
 
         #networkmanager #dependency of plasma
 
-        #TODO: do something about free/nonfree driver selection for nvidia
         #$([ "$gpu_configuration" = nvidia ] && echo nvidia)
 
         #$([ "$optimus_backend" = bumblebee ] && echo nvidia)
@@ -98,18 +94,17 @@ install_pacman_packages() {
         #konsole
         #dolphin
 
-        #$([ "$feature_extra_packages" = yes ] && echo "${extra_packages_official[@]}")
+        ${extra_packages_official[@]}
     )
 
     for package in ${packages[@]}; do echo "[DEBUG]: package: ->$package<-" >> archer.log; done
 
-    # remove "..." from post-transaction hooks
     pacstrap /mnt ${packages[@]} | awk '
         /^:: Synchronizing package databases\.\.\.$/ {
             print "XXX\n0\nSynchronizing package databases\nXXX"
         }
         /^Packages \([0-9]*\)/ {
-            total=substr($2, 2, length($2) - 2)
+            total = substr($2, 2, length($2) - 2)
         }
         /^downloading .*\.pkg\.tar.*\.\.\.$/ {
             dlindex++;
@@ -136,10 +131,11 @@ install_pacman_packages() {
     '
 }
 
+#TODO: AUR dependency checks
 install_aur_packages() {
     local packages=(
         $([ "$optimus_backend" = optimus-manager ] && echo optimus-manager)
-        $([ "$feature_extra_packages" = yes ] && echo "${extra_packages_aur[@]}")
+        ${extra_packages_aur[@]}
     )
 
     for package in ${packages[@]}; do echo "[DEBUG]: AUR package: ->$package<-" >> archer.log; done
@@ -162,6 +158,7 @@ install_aur_packages() {
     echo "[DEBUG]: aur packages installed: ->$(arch-chroot /mnt /bin/bash <<< 'pacman -Qm | wc -l')<-" >> archer.log
 }
 
+#TODO: other bootloader options
 install_bootloader() {
     arch-chroot /mnt /bin/bash <<< "bootctl --path=/boot install > /dev/null 2>&1"
     echo 'default arch-*' > /mnt/boot/loader/loader.conf
@@ -206,4 +203,19 @@ set_timezone() {
         hwclock --systohc"
 
     echo "[DEBUG]: timezone configured: ->$([ -n "$(ls -la /mnt/etc/localtime | grep $timezone)" ] && echo yes || echo no)<-" >> archer.log
+}
+
+configure_network() {
+    echo $hostname > /mnt/etc/hostname
+    echo "127.0.0.1  localhost" >> /mnt/etc/hosts
+    echo "::1        localhost" >> /mnt/etc/hosts
+    echo "127.0.1.1  $hostname.localdomain $hostname" >> /mnt/etc/hosts
+
+    echo "[DEBUG]: network configured: ->$([ -n "$(grep $hostname /mnt/etc/hosts)" ] && echo yes || echo no)<-" >> archer.log
+}
+
+set_root_password() {
+    arch-chroot /mnt /bin/bash <<< "yes $password | passwd > /dev/null 2>&1"
+
+    echo "[DEBUG]: password set for root: ->$([ -n "$(grep root /mnt/etc/shadow | grep '\$6\$')" ] && echo yes || echo no)<-" >> archer.log
 }

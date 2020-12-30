@@ -14,7 +14,6 @@ detect_gpu_configuration() {
     [ -n "$(lspci | grep 3D | grep -i amd)" ] && local gfx_accelerator=amd
     [ -n "$(lspci | grep 3D | grep -i nvidia)" ] && local gfx_accelerator=nvidia
 
-    #TODO: experiment with different amd configurations
     [ "$vga_controller" = amd ] && local configuration=amd
     [ "$vga_controller" = intel ] && local configuration=intel
     [ "$vga_controller" = nvidia ] && local configuration=nvidia

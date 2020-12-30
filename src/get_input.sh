@@ -9,6 +9,7 @@ get_drive() {
         3>&1 1>&2 2>&3
 }
 
+#TODO: experiment with box height
 get_mirrorlist_country() {
     whiptail --title 'Mirrorlist' \
         --menu 'Select country: ' \
@@ -24,9 +25,8 @@ get_locale() {
     whiptail --title 'Locale' \
         --menu 'Select locale: ' \
         0 0 0 \
-        en_US.UTF-8 UTF-8 \
         $(
-            awk -F'#' '/#\w/ { print $2 }' /etc/locale.gen
+            awk -F '#' '/^#[a-z]/ { print $2 } /^[a-z]/ { print $1 }' /etc/locale.gen
         ) \
         3>&1 1>&2 2>&3
 }
@@ -57,6 +57,7 @@ get_password() {
     whiptail --title 'Password' --passwordbox "Enter password: " 0 0 3>&1 1>&2 2>&3
 }
 
+#TODO: implement these
 get_desktop_environment() {
     whiptail --title 'DE/WM' --radiolist 'Select desktop environment / window manager:' 0 $(expr $(tput cols) \* 3 / 4) 0 \
         'bspwm' 'Tiling window manager that represents windows as the leaves of a full binary tree' OFF \
@@ -75,7 +76,6 @@ get_desktop_environment() {
         3>&1 1>&2 2>&3
 }
 
-#TODO: update details
 get_login_shell() {
     whiptail --title 'Shell' --radiolist 'Select user'\''s default shell:' 0 $(expr $(tput cols) \* 3 / 4) 0 \
         'bash' 'Bourne Again Shell, default shell of many distributions' ON \
@@ -84,7 +84,6 @@ get_login_shell() {
         3>&1 1>&2 2>&3
 }
 
-#TODO: more backends
 get_optimus_backend() {
     whiptail --title 'Optimus' --radiolist 'Select backend for GPU switching:' 0 $(expr $(tput cols) \* 3 / 4) 0 \
         'bumblebee' 'allows running selected applications on the dedicated GPU while using integrated graphics for everything else (sacrificing some performance)' ON \

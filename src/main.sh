@@ -6,7 +6,6 @@
 # TODO: backup and restore every modified file on system
 # TODO: dual-boot support?
 
-# TODO: mnt/etc/sudoers not found
 
 echo "[LOG]" > archer.log
 
@@ -18,6 +17,8 @@ echo "[DEBUG]: boot mode: ->$boot_mode<-" >> archer.log
 
 set_terminal_colors
 set_newt_colors
+
+cp /etc/pacman.conf /etc/pacman.conf.bak
 
 cpu_vendor="$(detect_cpu_vendor)"
 echo "[DEBUG]: cpu vendor: ->$cpu_vendor<-" >> archer.log
@@ -54,6 +55,7 @@ echo "[DEBUG]: DE/WM: ->$desktop_environment<-" >> archer.log
 login_shell="$(get_login_shell)"
 echo "[DEBUG]: login shell: ->$login_shell<-" >> archer.log
 
+exit
 
 #todo: change this?
 [ "$gpu_configuration" = optimus ] && optimus_backend="$(get_optimus_backend)"
@@ -149,6 +151,8 @@ for step in ${!execution_order[@]}; do
     echo -e "XXX\n$(expr $step \* 100 / ${#execution_order[@]})\n${description[${execution_order[$step]}]}\nXXX"
     ${execution_order[$step]}
 done | whiptail --title "Progress" --gauge "Initializing" 0 $(expr $(tput cols) \* 3 / 4) 0
+
+mv /etc/pacman.conf.bak /etc/pacman.conf
 
 whiptail --title 'Show log' --yesno "Show installation log?" 0 0 3>&1 1>&2 2>&3
 
