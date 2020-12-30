@@ -6,6 +6,7 @@
 # TODO: backup and restore every modified file on system
 # TODO: dual-boot support?
 
+# TODO: mnt/etc/sudoers not found
 setup() {
     echo "[LOG]" > archer.log
 
@@ -75,6 +76,9 @@ setup() {
     feature_extra_packages=$([ -n "$(grep 'add extra packages' <<< $optional_features)" ] && echo yes || echo no)
     echo "[DEBUG]: enable Extra Packages: ->$feature_extra_packages<-" >> archer.log
     [ $feature_extra_packages = yes ] && extra_packages="$(get_extra_packages)"
+    
+    feature_passwordless_sudo=$([ -n "$(grep 'passwordless sudo' <<< $optional_features)" ] && echo yes || echo no)
+    echo "[DEBUG]: enable Passwordless sudo: ->$feature_passwordless_sudo<-" >> archer.log
 
     feature_bluetooth_audio=$([ -n "$(grep 'bluetooth audio support' <<< $optional_features)" ] && echo yes || echo no)
     echo "[DEBUG]: enable Bluetooth Audio: ->$feature_bluetooth_audio<-" >> archer.log
@@ -95,9 +99,6 @@ setup() {
         fi
     done
 
-
-
-
     declare -A description
     description[create_partitions]="Creating partitions on $selected_drive"
     description[enable_ntp]='Enabling NTP'
@@ -116,7 +117,7 @@ setup() {
     description[configure_coredump]='Configuring coredump'
     description[set_root_password]='Setting root password'
     description[create_user]="Creating user $username"
-    description[enable_passwordless_sudo]="Enable pasworrdless sudo for wheel group"
+    description[enable_passwordless_sudo]="Enable passwordless sudo for wheel group"
     description[enable_autologin]="Enabling autologin for $username"
 
 
@@ -139,7 +140,7 @@ setup() {
         configure_coredump
         set_root_password
         create_user
-        enable_passwordless_sudo
+        $([ "$feature_passwordless_sudo" = yes ] && echo enable_passwordless_sudo)
         $([ "$feature_autologin" = yes ] && echo enable_autologin)
     )
 

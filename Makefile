@@ -10,6 +10,8 @@ archer:
 	@echo '' >> archer
 	@cat src/install.sh >> archer
 	@echo '' >> archer
+	@cat src/configure.sh >> archer
+	@echo '' >> archer
 	@cat src/main.sh >> archer
 	@chmod +x archer
 

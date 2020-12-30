@@ -24,7 +24,7 @@ detect_gpu_configuration() {
 }
 
 detect_battery() {
-    [ -n "$(grep -i battery /sys/class/power_supply/*/type)" ] && echo yes || echo no
+    [ -n "$(grep -i battery /sys/class/power_supply/*/type 2>/dev/null)" ] && echo yes || echo no
 }
 
 detect_wireless() {
@@ -37,5 +37,5 @@ detect_bluetooth() {
 }
 
 detect_ssd() {
-    [ -n "$(grep 0 /sys/block/*/queue/rotational)" ] && echo yes || echo no
+    [ -n "$(grep 0 /sys/block/*/queue/rotational 2>/dev/null)" ] && echo yes || echo no
 }

@@ -99,6 +99,7 @@ get_optional_features() {
         'autologin' 'Get automatically logged in on boot' OFF \
         'archstrike repository' 'Enable Archstrike repository (pentesting tools)' OFF \
         'add extra packages' 'Install additional packages from official repositories or AUR' OFF \
+        'passwordless sudo' 'No password prompt when running commands with sudo' ON \
         'bluetooth audio support' 'Add support for bluetooth headphones and speakers' OFF \
         3>&1 1>&2 2>&3
 }
