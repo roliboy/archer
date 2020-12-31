@@ -13,7 +13,7 @@ get_drive() {
 get_mirrorlist_country() {
     whiptail --title 'Mirrorlist' \
         --menu 'Select country: ' \
-        0 0 0 \
+        $(expr $(tput lines) \* 3 / 4) 32 $(expr $(tput lines) \* 3 / 4 - 8) \
         $(
             curl -s https://archlinux.org/mirrorlist/ |
             awk -F'[<">]' '/<option value=".*">.*<\/option>/ { gsub(" ", "-", $5); print $3, $5 }'
@@ -96,6 +96,7 @@ get_optional_features() {
     whiptail --title 'Optional features' --checklist 'Select optional features' --separate-output 0 $(expr $(tput cols) \* 3 / 4) 0 \
         'netcache' 'Use netcache during installation' OFF \
         'autologin' 'Get automatically logged in on boot' OFF \
+        'rank mirrors' 'Rank pacman mirrors by speed' OFF \
         'archstrike repository' 'Enable Archstrike repository (pentesting tools)' OFF \
         'add extra packages' 'Install additional packages from official repositories or AUR' OFF \
         'passwordless sudo' 'No password prompt when running commands with sudo' ON \

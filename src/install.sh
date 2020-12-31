@@ -31,7 +31,6 @@ enable_ntp() {
     echo "[DEBUG]: network time protocol: ->$(timedatectl show | grep '^NTP=' | cut -d'=' -f 2)<-" >> archer.log
 }
 
-# TODO: rank mirrors
 download_mirrorlist() {
     api_endpoint="https://archlinux.org/mirrorlist/?"
     api_param_country="country=$mirrorlist_country&"
@@ -43,10 +42,54 @@ download_mirrorlist() {
     awk '/Server/ {print "[DEBUG]: mirror:", "->"$3"<-"}' /etc/pacman.d/mirrorlist >> archer.log
 }
 
+#TODO: rank by file download speed
+# TODO: improve feedback, mirror $i out of $x total
+rank_mirrors() {
+    echo -ne '' > /tmp/mirrorlist-ranked
+    for mirror in $(awk '/Server/ { print $3 }' /etc/pacman.d/mirrorlist); do
+        host=$(grep -o '.*//[^/]*' <<< "$mirror")
+        domain="$(cut -d'/' -f3 <<< $mirror)"
+
+        ping $domain -c 8 | awk "
+        /time/ {
+            split(\$(NF-1), time, \"=\");
+            total += time[2];
+            crt++;
+            progress = int(100 * crt / 8);
+            print \"XXX\n\"progress\"\nPinging $host - \"time[2]\" ms\nXXX\";
+            fflush(stdout);
+        }
+        END {
+            print total > \"/tmp/ping-result\"
+        }"
+
+        pingtime="$(cat /tmp/ping-result)"
+
+        echo "$pingtime $mirror" >> /tmp/mirrorlist-ranked
+
+        #url="$(eval echo $mirror)"
+
+        #echo "$url"
+        
+
+#         $(expr $step \* 100 / ${#execution_order[@]})
+        #groff_rtt="$({ time curl -s "$url/groff-1.22.4-3-x86_64.pkg.tar.xz" -o /dev/null; } 2>&1 | grep real)"
+        #echo "$groff_rtt"
+
+        #icu_rtt="$({ time curl -s "$url/icu-68.2-1-x86_64.pkg.tar.zst" -o /dev/null; } 2>&1 | grep real)"
+        #echo "$icu_rtt"
+
+        #curl https://mirrors.chroot.ro/archlinux/core/os/x86_64/ | grep -shoP '<tr>.*</tr>' | grep '>icu.*zst<'
+
+        #echo -ne '\n\n\n'
+    done
+    cat /tmp/mirrorlist-ranked | sort -nk1 | awk '{ print "Server = "$2 }' > /etc/pacman.d/mirrorlist
+#     TODO: remove created files?
+}
 
 enable_netcache() {
     sed -i "/\[core\]/i[netcache]\nSigLevel = Optional TrustAll\nServer = http://$netcache_ip:1337/\n" /etc/pacman.conf
-    
+
     echo "[DEBUG]: netcache repository added to pacman.conf: ->$([ -n "$(grep netcache /etc/pacman.conf)" ] && echo yes || echo no)<-" >> archer.log
 }
 
@@ -84,12 +127,12 @@ install_pacman_packages() {
         #$([ "$has_battery" = yes ] && echo tlp)
         #$([ "$has_battery" = yes ] && [ "$has_wireless" = yes ] && echo tlp-rdw)
 
-#         TODO: dependencies based on desktop environment
+#TODO: dependencies based on desktop environment
         #$([ "$feature_bluetooth_audio" = yes ] && echo pulseaudio-bluetooth)
 
-# TODO: bluetooth
+#TODO: bluetooth
 #         pulseaudio-bluez
-# TODO: provide multiple desktop environments
+#TODO: provide multiple desktop environments
         #plasma
         #konsole
         #dolphin
@@ -132,6 +175,7 @@ install_pacman_packages() {
 }
 
 #TODO: AUR dependency checks
+#TODO: hide output from aur package install
 install_aur_packages() {
     local packages=(
         $([ "$optimus_backend" = optimus-manager ] && echo optimus-manager)

@@ -1,11 +1,6 @@
-# TODO: hide output from aur package install
-# TODO: add required packages from base-devel to pacstrap if installing aur packages
-# TODO: do something about free/nonfree driver options for gpu
-# TODO: send shutdown signal to netcache
-# TODO: improve aur debug log
-# TODO: backup and restore every modified file on system
-# TODO: dual-boot support?
-
+#TODO: send shutdown signal to netcache
+#TODO: improve aur debug log
+#TODO: dual-boot support?
 
 echo "[LOG]" > archer.log
 
@@ -55,15 +50,10 @@ echo "[DEBUG]: DE/WM: ->$desktop_environment<-" >> archer.log
 login_shell="$(get_login_shell)"
 echo "[DEBUG]: login shell: ->$login_shell<-" >> archer.log
 
-exit
-
-#todo: change this?
 [ "$gpu_configuration" = optimus ] && optimus_backend="$(get_optimus_backend)"
 [ "$gpu_configuration" = optimus ] && echo "[DEBUG]: optimus backend: ->$optimus_backend<-" >> archer.log
 
 optional_features="$(get_optional_features)"
-# echo $optional_features
-
 
 feature_netcache=$([ -n "$(grep 'netcache' <<< $optional_features)" ] && echo yes || echo no)
 echo "[DEBUG]: enable netcache: ->$feature_netcache<-" >> archer.log
@@ -71,6 +61,9 @@ echo "[DEBUG]: enable netcache: ->$feature_netcache<-" >> archer.log
 
 feature_autologin=$([ -n "$(grep 'autologin' <<< $optional_features)" ] && echo yes || echo no)
 echo "[DEBUG]: enable autologin: ->$feature_autologin<-" >> archer.log
+
+feature_rank_mirrors=$([ -n "$(grep 'rank mirrors' <<< $optional_features)" ] && echo yes || echo no)
+echo "[DEBUG]: enable mirror ranking: ->$feature_rank_mirrors<-" >> archer.log
 
 feature_archstrike_repository=$([ -n "$(grep 'archstrike repository' <<< $optional_features)" ] && echo yes || echo no)
 echo "[DEBUG]: enable Archstrike repository: ->$feature_archstrike_repository<-" >> archer.log
@@ -85,7 +78,7 @@ echo "[DEBUG]: enable Passwordless sudo: ->$feature_passwordless_sudo<-" >> arch
 feature_bluetooth_audio=$([ -n "$(grep 'bluetooth audio support' <<< $optional_features)" ] && echo yes || echo no)
 echo "[DEBUG]: enable Bluetooth Audio: ->$feature_bluetooth_audio<-" >> archer.log
 
-#TODO: separate function
+#TODO: separate function?
 extra_packages_official=()
 extra_packages_aur=()
 pacman -Sy > /dev/null 2>&1
@@ -105,43 +98,49 @@ declare -A description
 description[create_partitions]="Creating partitions on $selected_drive"
 description[enable_ntp]='Enabling NTP'
 description[download_mirrorlist]='Downloading mirrorlist'
+description[rank_mirrors]='Ranking mirrors'
+description[enable_netcache]='Enabling netcache'
 description[install_pacman_packages]='Installing pacman packages'
-description[enable_archstrike_repository]='Enabling archstrike repository'
 description[install_aur_packages]='Installing AUR packages'
+description[install_bootloader]='Installing bootloader'
 description[generate_fstab]='Generating fstab'
 description[generate_locale]='Generating locale'
-description[install_bootloader]='Installing bootloader'
 description[set_timezone]='Setting timezone'
 description[configure_network]='Configuring network'
+description[set_root_password]='Setting root password'
 description[configure_pacman]='Configuring pacman'
 description[configure_tlp]='Configuring TLP'
 description[configure_journald]='Configuring journald'
 description[configure_coredump]='Configuring coredump'
-description[set_root_password]='Setting root password'
 description[create_user]="Creating user $username"
+description[enable_services]='Enabling systemd services'
+description[enable_archstrike_repository]='Enabling archstrike repository'
 description[enable_passwordless_sudo]="Enable passwordless sudo for wheel group"
 description[enable_autologin]="Enabling autologin for $username"
 
 
-local execution_order=(
+execution_order=(
     create_partitions
     enable_ntp
     download_mirrorlist
+    $([ "$feature_rank_mirrors" = yes ] && echo rank_mirrors)
     $([ "$feature_netcache" = yes ] && echo enable_netcache)
     install_pacman_packages
-    $([ "$feature_archstrike_repository" = yes ] && echo enable_archstrike_repository)
+#     TODO: condition for install aur package
     install_aur_packages
+    install_bootloader
     generate_fstab
     generate_locale
-    install_bootloader
     set_timezone
     configure_network
+    set_root_password
     configure_pacman
     $([ "$has_battery" = yes ] && echo configure_tlp)
     configure_journald
     configure_coredump
-    set_root_password
     create_user
+    enable_services
+    $([ "$feature_archstrike_repository" = yes ] && echo enable_archstrike_repository)
     $([ "$feature_passwordless_sudo" = yes ] && echo enable_passwordless_sudo)
     $([ "$feature_autologin" = yes ] && echo enable_autologin)
 )

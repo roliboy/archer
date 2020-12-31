@@ -38,7 +38,7 @@ create_user() {
     [ "$optimus_backend" = bumblebee ] && \
         arch-chroot /mnt /bin/bash <<< "gpasswd -a $username bumblebee > /dev/null"
 
-    # TODO: check for other properties
+#TODO: check for other properties
     echo "[DEBUG]: user created: ->$([ -n "$(grep $username /mnt/etc/shadow | grep '\$6\$')" ] && echo yes || echo no)<-" >> archer.log
 }
 
@@ -86,7 +86,7 @@ enable_passwordless_sudo() {
 }
 
 enable_autologin() {
-    # TODO: handle different display managers
+#TODO: handle different display managers
 
     [ "$desktop_environment" = 'KDE Plasma' ] && \
         echo -e "[Autologin]\nUser=$username\nSession=plasma.desktop" > /mnt/etc/sddm.conf.d/autologin.conf
@@ -97,5 +97,5 @@ enable_autologin() {
 
     [ "$desktop_environment" = 'KDE Plasma' ] && \
         echo "[DEBUG]: autologin enabled: ->$([ -n "$(grep $username /mnt/etc/sddm.conf.d/autologin.conf)" ] && echo yes || echo no)<-" >> archer.log
-    # TODO: debug check
+#TODO: debug check
 }

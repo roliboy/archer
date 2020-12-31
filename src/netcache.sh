@@ -4,9 +4,9 @@ declare -A package_versions
 declare -A package_files
 
 echo loading package files
-total_packages="$(ls *.pkg.tar.zst | wc -l)"
+total_packages="$(ls *.pkg.tar.* | wc -l)"
 echo -ne "0/$total_packages"
-for package_file in *.pkg.tar.zst; do
+for package_file in *.pkg.tar.*; do
     i="$(expr $i + 1)"
     echo -ne "\r$i/$total_packages"
     package_size="$(du $package_file | awk '{print $1}')"
