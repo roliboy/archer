@@ -14,6 +14,11 @@ echo "[DEBUG]: boot mode: ->$boot_mode<-" >> archer.log
 set_terminal_colors
 set_newt_colors
 
+#TODO: decide how this will be handled
+timedatectl set-ntp true
+sleep 2
+# 
+
 cp /etc/pacman.conf /etc/pacman.conf.bak
 
 cpu_vendor="$(detect_cpu_vendor)"
@@ -94,6 +99,8 @@ for package in $extra_packages; do
         echo "[DEBUG]: unknown package: ->$package<-" >> archer.log
     fi
 done
+#TODO: something better than this
+needs_aur="$([ ${#extra_packages_aur[@]} != 0 ] && echo yes || echo no)"
 
 declare -A description
 description[create_partitions]="Creating partitions on $selected_drive"
@@ -127,8 +134,7 @@ execution_order=(
     $([ "$feature_rank_mirrors" = yes ] && echo rank_mirrors)
     $([ "$feature_netcache" = yes ] && echo enable_netcache)
     install_pacman_packages
-#     TODO: condition for install aur package
-    install_aur_packages
+    $([ "$needs_aur" = yes ] && echo install_aur_packages)
     install_bootloader
     generate_fstab
     generate_locale
@@ -157,3 +163,4 @@ mv /etc/pacman.conf.bak /etc/pacman.conf
 whiptail --title 'Show log' --yesno "Show installation log?" 0 0 3>&1 1>&2 2>&3
 
 [ $? = 0 ] && whiptail --title 'archer.log' --textbox archer.log 0 0 3>&1 1>&2 2>&3
+# [ $? = 0 ] && whiptail --title 'archer.log' --textbox archer.log $(expr $(tput lines) \* 3 / 4) $(expr $(tput cols) \* 3 / 4) 3>&1 1>&2 2>&3

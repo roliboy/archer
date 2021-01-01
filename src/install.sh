@@ -26,7 +26,7 @@ create_partitions() {
 
 #TODO: :thinking_face:
 enable_ntp() {
-    timedatectl set-ntp true
+#     timedatectl set-ntp true
 
     echo "[DEBUG]: network time protocol: ->$(timedatectl show | grep '^NTP=' | cut -d'=' -f 2)<-" >> archer.log
 }
@@ -43,12 +43,11 @@ download_mirrorlist() {
 }
 
 #TODO: rank by file download speed
-# TODO: improve feedback, mirror $i out of $x total
 rank_mirrors() {
     echo -ne '' > /tmp/mirrorlist-ranked
-    
+
     mirrorlist=($(awk '/Server/ { print $3 }' /etc/pacman.d/mirrorlist))
-    
+
     for mirror in "${mirrorlist[@]}"; do
         host=$(grep -o '.*//[^/]*' <<< "$mirror")
         domain="$(cut -d'/' -f3 <<< $mirror)"
@@ -74,8 +73,7 @@ rank_mirrors() {
         #url="$(eval echo $mirror)"
 
         #echo "$url"
-        
-
+#        package="$url/icu-1.22.4-3-x86_64.pkg.tar.xz"
 #         $(expr $step \* 100 / ${#execution_order[@]})
         #groff_rtt="$({ time curl -s "$url/groff-1.22.4-3-x86_64.pkg.tar.xz" -o /dev/null; } 2>&1 | grep real)"
         #echo "$groff_rtt"
@@ -104,8 +102,9 @@ install_pacman_packages() {
         sudo
         make
         patch
-#         $([ "" ] && echo fakeroot)
-#         $([ "" ] && echo binutils)
+        $([ "$needs_aur" = yes ] && echo fakeroot)
+        $([ "$needs_aur" = yes ] && echo binutils)
+
 #         linux
 #         linux-firmware
         #$([ "$cpu_vendor" = intel ] && echo intel-ucode)
@@ -180,10 +179,10 @@ install_pacman_packages() {
 }
 
 #TODO: AUR dependency checks
-#TODO: hide output from aur package install
+#TODO: progress feedback
 install_aur_packages() {
     local packages=(
-        $([ "$optimus_backend" = optimus-manager ] && echo optimus-manager)
+#         $([ "$optimus_backend" = optimus-manager ] && echo optimus-manager)
         ${extra_packages_aur[@]}
     )
 
@@ -194,9 +193,9 @@ install_aur_packages() {
     for package in ${packages[@]}; do
         arch-chroot /mnt /bin/bash <<< "cd /tmp && \
             curl -sO https://aur.archlinux.org/cgit/aur.git/snapshot/$package.tar.gz > /dev/null 2>&1
-            sudo -u nobody tar xfvz $package.tar.gz && \
+            sudo -u nobody tar xfvz $package.tar.gz > /dev/null 2>&1 && \
             cd $package && \
-            sudo -u nobody makepkg -risc --noconfirm && \
+            sudo -u nobody makepkg -risc --noconfirm > /dev/null 2>&1 && \
             cd /tmp && \
             rm $package.tar.gz && \
             rm -rf $package"

@@ -54,7 +54,7 @@ get_username() {
 }
 
 get_password() {
-    whiptail --title 'Password' --passwordbox 'Enter password:' 7 $(expr $(tput cols) \* 3 / 4) 3>&1 1>&2 2>&3
+    whiptail --title 'Password' --passwordbox 'Enter password:' 8 $(expr $(tput cols) \* 3 / 4) 3>&1 1>&2 2>&3
 }
 
 #TODO: implement these
