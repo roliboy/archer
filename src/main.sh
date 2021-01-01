@@ -1,5 +1,6 @@
 #TODO: send shutdown signal to netcache
 #TODO: improve aur debug log
+#TODO: overall progress bar (background title)
 #TODO: dual-boot support?
 
 echo "[LOG]" > archer.log

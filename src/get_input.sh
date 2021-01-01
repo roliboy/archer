@@ -9,7 +9,7 @@ get_drive() {
         3>&1 1>&2 2>&3
 }
 
-#TODO: experiment with box height
+#TODO: dynamically determine box width
 get_mirrorlist_country() {
     whiptail --title 'Mirrorlist' \
         --menu 'Select country: ' \
@@ -24,7 +24,7 @@ get_mirrorlist_country() {
 get_locale() {
     whiptail --title 'Locale' \
         --menu 'Select locale: ' \
-        0 0 0 \
+        $(expr $(tput lines) \* 3 / 4) 35 $(expr $(tput lines) \* 3 / 4 - 8) \
         $(
             awk -F '#' '/^#[a-z]/ { print $2 } /^[a-z]/ { print $1 }' /etc/locale.gen
         ) \
@@ -34,7 +34,7 @@ get_locale() {
 get_timezone() {
     whiptail --title 'Timezone' \
         --menu 'Select timezone: ' \
-        0 0 0 \
+        $(expr $(tput lines) \* 3 / 4) 33 $(expr $(tput lines) \* 3 / 4 - 8) \
         $(
             for zone in $(ls -F /usr/share/zoneinfo | grep \/$); do
                 for region in $(ls /usr/share/zoneinfo/$zone); do
@@ -46,15 +46,15 @@ get_timezone() {
 }
 
 get_hostname() {
-    whiptail --title 'Hostname' --inputbox "Enter hostname: " 0 0 3>&1 1>&2 2>&3
+    whiptail --title 'Hostname' --inputbox 'Enter hostname:' 0 $(expr $(tput cols) \* 3 / 4) 3>&1 1>&2 2>&3
 }
 
 get_username() {
-    whiptail --title 'Username' --inputbox "Enter username: " 0 0 3>&1 1>&2 2>&3
+    whiptail --title 'Username' --inputbox 'Enter username:' 0 $(expr $(tput cols) \* 3 / 4) 3>&1 1>&2 2>&3
 }
 
 get_password() {
-    whiptail --title 'Password' --passwordbox "Enter password: " 0 0 3>&1 1>&2 2>&3
+    whiptail --title 'Password' --passwordbox 'Enter password:' 7 $(expr $(tput cols) \* 3 / 4) 3>&1 1>&2 2>&3
 }
 
 #TODO: implement these

@@ -46,17 +46,21 @@ download_mirrorlist() {
 # TODO: improve feedback, mirror $i out of $x total
 rank_mirrors() {
     echo -ne '' > /tmp/mirrorlist-ranked
-    for mirror in $(awk '/Server/ { print $3 }' /etc/pacman.d/mirrorlist); do
+    
+    mirrorlist=($(awk '/Server/ { print $3 }' /etc/pacman.d/mirrorlist))
+    
+    for mirror in "${mirrorlist[@]}"; do
         host=$(grep -o '.*//[^/]*' <<< "$mirror")
         domain="$(cut -d'/' -f3 <<< $mirror)"
+        index="$(expr $index + 1)"
 
         ping $domain -c 8 | awk "
-        /time/ {
+        /time=/ {
             split(\$(NF-1), time, \"=\");
             total += time[2];
             crt++;
             progress = int(100 * crt / 8);
-            print \"XXX\n\"progress\"\nPinging $host - \"time[2]\" ms\nXXX\";
+            print \"XXX\n\"progress\"\nPinging [$index/${#mirrorlist[@]}] $host - \"time[2]\" ms\nXXX\";
             fflush(stdout);
         }
         END {
@@ -84,7 +88,8 @@ rank_mirrors() {
         #echo -ne '\n\n\n'
     done
     cat /tmp/mirrorlist-ranked | sort -nk1 | awk '{ print "Server = "$2 }' > /etc/pacman.d/mirrorlist
-#     TODO: remove created files?
+    rm /tmp/ping-result
+    rm /tmp/mirrorlist-ranked
 }
 
 enable_netcache() {
