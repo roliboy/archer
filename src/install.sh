@@ -24,13 +24,6 @@ create_partitions() {
     echo "[DEBUG]: root partition created and mounted: ->$([ -n "$(findmnt -o TARGET,FSTYPE ${selected_drive}2 | grep / | grep ext4)" ] && echo yes || echo no)<-" >> archer.log
 }
 
-#TODO: :thinking_face:
-enable_ntp() {
-#     timedatectl set-ntp true
-
-    echo "[DEBUG]: network time protocol: ->$(timedatectl show | grep '^NTP=' | cut -d'=' -f 2)<-" >> archer.log
-}
-
 download_mirrorlist() {
     api_endpoint="https://archlinux.org/mirrorlist/?"
     api_param_country="country=$mirrorlist_country&"

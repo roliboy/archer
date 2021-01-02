@@ -39,3 +39,9 @@ set_newt_colors() {
         compactbutton=cyan,black
         actsellistbox=black,cyan'
 }
+
+set_ntp() {
+    timedatectl set-ntp true
+
+    echo "[DEBUG]: network time protocol: ->$(timedatectl show | grep '^NTP=' | cut -d'=' -f 2)<-" >> archer.log
+}

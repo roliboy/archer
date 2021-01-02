@@ -1,6 +1,5 @@
 #TODO: send shutdown signal to netcache
 #TODO: improve aur debug log
-#TODO: overall progress bar (background title)
 #TODO: dual-boot support?
 
 echo "[LOG]" > archer.log
@@ -13,11 +12,10 @@ echo "[DEBUG]: boot mode: ->$boot_mode<-" >> archer.log
 
 set_terminal_colors
 set_newt_colors
+set_ntp
 
-#TODO: decide how this will be handled
-timedatectl set-ntp true
+#TODO: maybe remove this
 sleep 2
-# 
 
 cp /etc/pacman.conf /etc/pacman.conf.bak
 
