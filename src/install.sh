@@ -184,13 +184,16 @@ install_aur_packages() {
     sed -i '/^root.*/a nobody ALL=(ALL) NOPASSWD: ALL' /mnt/etc/sudoers
 
     for package in ${packages[@]}; do
-        arch-chroot /mnt /bin/bash <<< "cd /tmp && \
-            curl -sO https://aur.archlinux.org/cgit/aur.git/snapshot/$package.tar.gz > /dev/null 2>&1
-            sudo -u nobody tar xfvz $package.tar.gz > /dev/null 2>&1 && \
-            cd $package && \
-            sudo -u nobody makepkg -risc --noconfirm > /dev/null 2>&1 && \
-            cd /tmp && \
-            rm $package.tar.gz && \
+        arch-chroot /mnt /bin/bash <<< "cd /tmp &&
+            echo -e 'XXX\n0\nDownloading $package\nXXX' &&
+            curl -sO https://aur.archlinux.org/cgit/aur.git/snapshot/$package.tar.gz > /dev/null 2>&1 &&
+            echo -e 'XXX\n25\nExtracting $package\nXXX' &&
+            sudo -u nobody tar xfvz $package.tar.gz > /dev/null 2>&1 &&
+            cd $package &&
+            echo -e 'XXX\n50\nBuilding and installing $package\nXXX' &&
+            sudo -u nobody makepkg -risc --noconfirm > /dev/null 2>&1 &&
+            cd /tmp &&
+            rm $package.tar.gz &&
             rm -rf $package"
     done
 
