@@ -93,17 +93,24 @@ install_pacman_packages() {
     local packages=(
         base
         sudo
+        
         make
         patch
-        $([ "$needs_aur" = yes ] && echo fakeroot)
-        $([ "$needs_aur" = yes ] && echo binutils)
+        
+        fakeroot
+        binutils
+        
+#         :thinking_face:
+        pkgconf
+        gcc
 
-#         linux
-#         linux-firmware
-        #$([ "$cpu_vendor" = intel ] && echo intel-ucode)
-        #$([ "$cpu_vendor" = amd ] && echo amd-ucode)
+        linux
+        linux-firmware
+        
+        $([ "$cpu_vendor" = intel ] && echo intel-ucode)
+        $([ "$cpu_vendor" = amd ] && echo amd-ucode)
 
-        #networkmanager #dependency of plasma
+        networkmanager
 
         #$([ "$gpu_configuration" = nvidia ] && echo nvidia)
 
@@ -118,22 +125,49 @@ install_pacman_packages() {
 
 
         $([ "$login_shell" = bash ] && echo bash)
-        #$([ "$login_shell" = fish ] && echo fish)
-        #$([ "$login_shell" = zsh ] && echo zsh)
+        $([ "$login_shell" = fish ] && echo fish)
+        $([ "$login_shell" = zsh ] && echo zsh)
 
-        #$([ "$has_battery" = yes ] && echo tlp)
-        #$([ "$has_battery" = yes ] && [ "$has_wireless" = yes ] && echo tlp-rdw)
+        $([ "$has_battery" = yes ] && echo tlp)
+        $([ "$has_battery" = yes ] && [ "$has_wireless" = yes ] && echo tlp-rdw)
 
-#TODO: dependencies based on desktop environment
+#         TODO: add menu bar
+        $([ "$desktop_environment" = bspwm ] && echo bspwm sxhkd)
+        
+        $([ "$desktop_environment" = dwm ] && echo xorg-server xorg-xinit xorg-fonts-100dpi)
+        
+        $([ "$desktop_environment" = i3 ] && echo i3-gaps)
+        $([ "$desktop_environment" = 'KDE Plasma' ] && echo plasma)
+        
+#         bluedevil
+#         breeze-gtk
+#         kde-gtk-config
+#         kdeplasma-addons
+#         kgamma5
+#         khotkeys
+#         kinfocenter
+#         kscreen
+#         kwayland-integration
+#         kwrited
+#         plasma-browser-integration
+#         plasma-desktop
+#         plasma-disks
+#         plasma-nm
+#         plasma-pa
+#         plasma-thunderbolt
+#         #not too usefull
+#         plasma-vault
+#         plasma-workspace
+#         plasma-workspace-wallpapers
+#         powerdevil
+#         sddm-kcm
+#         #not sure what this does
+#         xdg-desktop-portal-kde
+#         
         #$([ "$feature_bluetooth_audio" = yes ] && echo pulseaudio-bluetooth)
 
 #TODO: bluetooth
 #         pulseaudio-bluez
-#TODO: provide multiple desktop environments
-        #plasma
-        #konsole
-        #dolphin
-
         ${extra_packages_official[@]}
     )
 
@@ -175,6 +209,7 @@ install_pacman_packages() {
 #TODO: progress feedback
 install_aur_packages() {
     local packages=(
+        $([ "$desktop_environment" = dwm ] && echo dwm)
 #         $([ "$optimus_backend" = optimus-manager ] && echo optimus-manager)
         ${extra_packages_aur[@]}
     )
@@ -183,19 +218,18 @@ install_aur_packages() {
 
     sed -i '/^root.*/a nobody ALL=(ALL) NOPASSWD: ALL' /mnt/etc/sudoers
 
-    for package in ${packages[@]}; do
-        arch-chroot /mnt /bin/bash <<< "cd /tmp &&
-            echo -e 'XXX\n0\nDownloading $package\nXXX' &&
-            curl -sO https://aur.archlinux.org/cgit/aur.git/snapshot/$package.tar.gz > /dev/null 2>&1 &&
-            echo -e 'XXX\n25\nExtracting $package\nXXX' &&
-            sudo -u nobody tar xfvz $package.tar.gz > /dev/null 2>&1 &&
-            cd $package &&
-            echo -e 'XXX\n50\nBuilding and installing $package\nXXX' &&
-            sudo -u nobody makepkg -risc --noconfirm > /dev/null 2>&1 &&
-            cd /tmp &&
-            rm $package.tar.gz &&
-            rm -rf $package"
-    done
+    arch-chroot /mnt /bin/bash <<< "cd /tmp &&
+        curl -sO https://aur.archlinux.org/cgit/aur.git/snapshot/yay-bin.tar.gz > /dev/null 2>&1 &&
+        sudo -u nobody tar xfvz yay-bin.tar.gz > /dev/null 2>&1 &&
+        cd yay-bin &&
+        sudo -u nobody makepkg -risc --noconfirm > /dev/null 2>&1 &&
+        cd /tmp &&
+        rm yay-bin.tar.gz &&
+        rm -rf yay-bin &&
+        for package in ${packages[@]}; do
+            echo -e 'XXX\n0\nInstalling \$package\nXXX'
+            sudo -u nobody bash -c 'HOME=/tmp; yay -S \$package --noconfirm'
+        done"
 
     sed -i '/^nobody.*/d' /mnt/etc/sudoers
 

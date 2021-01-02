@@ -51,6 +51,28 @@ test:
 		-global driver=cfi.pflash01,property=secure,value=off \
 		-no-reboot
 
+.PHONY: boot
+boot:
+	@qemu-system-x86_64 \
+		-m size=1G,slots=3,maxmem=4G \
+		-k en \
+		-name archer,process=archer-vm \
+		-drive file=archlinux.img,format=qcow2 \
+		-display sdl \
+		-vga virtio \
+		-usb \
+		-device usb-tablet,bus=usb-bus.0,port=1 \
+		-net nic \
+		-net user,hostfwd=tcp::10022-:22 \
+		-smp 1 \
+		-cpu host \
+		-machine type=q35,smm=on,accel=kvm,usb=on \
+		-global ICH9-LPC.disable_s3=1 \
+		-enable-kvm \
+		-bios /usr/share/edk2-ovmf/x64/OVMF_CODE.fd \
+		-global driver=cfi.pflash01,property=secure,value=off \
+		-no-reboot
+
 .PHONY: setup
 setup:
 	curl -L 'http://mirrors.evowise.com/archlinux/iso/2020.12.01/archlinux-2020.12.01-x86_64.iso' -o archlinux.iso

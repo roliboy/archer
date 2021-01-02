@@ -1,6 +1,7 @@
 #TODO: send shutdown signal to netcache
 #TODO: improve aur debug log
 #TODO: dual-boot support?
+#TODO: kill reflector service
 
 echo "[LOG]" > archer.log
 
@@ -97,12 +98,9 @@ for package in $extra_packages; do
         echo "[DEBUG]: unknown package: ->$package<-" >> archer.log
     fi
 done
-#TODO: something better than this
-needs_aur="$([ ${#extra_packages_aur[@]} != 0 ] && echo yes || echo no)"
 
 declare -A description
 description[create_partitions]="Creating partitions on $selected_drive"
-# description[enable_ntp]='Enabling NTP'
 description[download_mirrorlist]='Downloading mirrorlist'
 description[rank_mirrors]='Ranking mirrors'
 description[enable_netcache]='Enabling netcache'
@@ -127,12 +125,11 @@ description[enable_autologin]="Enabling autologin for $username"
 
 execution_order=(
     create_partitions
-#     enable_ntp
     download_mirrorlist
     $([ "$feature_rank_mirrors" = yes ] && echo rank_mirrors)
     $([ "$feature_netcache" = yes ] && echo enable_netcache)
     install_pacman_packages
-    $([ "$needs_aur" = yes ] && echo install_aur_packages)
+    install_aur_packages
     install_bootloader
     generate_fstab
     generate_locale

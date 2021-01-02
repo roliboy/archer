@@ -61,17 +61,17 @@ get_password() {
 get_desktop_environment() {
     whiptail --title 'DE/WM' --radiolist 'Select desktop environment / window manager:' 0 $(expr $(tput cols) \* 3 / 4) 0 \
         'bspwm' 'Tiling window manager that represents windows as the leaves of a full binary tree' OFF \
-        'Budgie' 'Desktop environment designed with the modern user in mind, that focuses on simplicity and elegance' OFF \
-        'Cinnamon' 'Combines a traditional desktop layout with modern graphical effects' OFF \
-        'Deepin' 'Intuitive and elegant design providing an easy to use and reliable system for global users' OFF \
+        'Budgie' '[WIP]Desktop environment designed with the modern user in mind, that focuses on simplicity and elegance' OFF \
+        'Cinnamon' '[WIP]Combines a traditional desktop layout with modern graphical effects' OFF \
+        'Deepin' '[WIP]Intuitive and elegant design providing an easy to use and reliable system for global users' OFF \
         'dwm' 'extremely lightweight and fast tiling WM, optimizing the environment for the task being performed' OFF \
-        'GNOME' 'Attractive, intuitive and extensible desktop with a modern look' OFF \
+        'GNOME' '[WIP]Attractive, intuitive and extensible desktop with a modern look' OFF \
         'i3' 'Tiling window manager primarily targeted at developers and advanced users' OFF \
         'KDE Plasma' 'Modern and polished, highly customizable and lightweight' ON \
-        'LXDE' 'Lightweight, fast and energy-saving desktop environment with a modern interface' OFF \
-        'LXQt' 'Modular, blazing-fast and user-friendly desktop environment' OFF \
-        'MATE' 'Intuitive and attractive, preserving a traditional desktop experience' OFF \
-        'Xfce' 'Lightweight and modular desktop environment ' OFF \
+        'LXDE' '[WIP]Lightweight, fast and energy-saving desktop environment with a modern interface' OFF \
+        'LXQt' '[WIP]Modular, blazing-fast and user-friendly desktop environment' OFF \
+        'MATE' '[WIP]Intuitive and attractive, preserving a traditional desktop experience' OFF \
+        'Xfce' '[WIP]Lightweight and modular desktop environment ' OFF \
         'None' 'Don'\''t install a desktop environment / window manager'  OFF \
         3>&1 1>&2 2>&3
 }

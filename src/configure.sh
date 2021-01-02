@@ -56,6 +56,7 @@ enable_services() {
     [ "$optimus_backend" = optimus ] && arch-chroot /mnt /bin/bash <<< "systemctl enable bumblebeed.service > /dev/null 2>&1"
     [ "$optimus_backend" = optimus-manager ] && arch-chroot /mnt /bin/bash <<< "systemctl enable optimus-manager.service > /dev/null 2>&1"
 
+    [ "$desktop_environment" = dwm ] && echo 'exec dwm' > "/mnt/home/$username/.xinitrc"
     [ "$desktop_environment" = 'KDE Plasma' ] && arch-chroot /mnt /bin/bash <<< "systemctl enable sddm.service"
 #       bluetooth
 }
