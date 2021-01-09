@@ -1,4 +1,3 @@
-#TODO: bigger font for readme screenshots
 #TODO: send shutdown signal to netcache
 #TODO: improve aur debug log
 #TODO: dual-boot support?
@@ -14,11 +13,10 @@ echo "[DEBUG]: boot mode: ->$boot_mode<-" >> archer.log
 
 set_terminal_colors
 set_newt_colors
-set_ntp
 
-#TODO: maybe remove this
-sleep 2
 systemctl stop reflector
+timedatectl set-ntp true
+sleep 5
 
 cp /etc/pacman.conf /etc/pacman.conf.bak
 
@@ -160,4 +158,3 @@ mv /etc/pacman.conf.bak /etc/pacman.conf
 whiptail --title 'Show log' --yesno "Show installation log?" 0 0 3>&1 1>&2 2>&3
 
 [ $? = 0 ] && whiptail --title 'archer.log' --textbox archer.log 0 0 3>&1 1>&2 2>&3
-# [ $? = 0 ] && whiptail --title 'archer.log' --textbox archer.log $(expr $(tput lines) \* 3 / 4) $(expr $(tput cols) \* 3 / 4) 3>&1 1>&2 2>&3

@@ -213,23 +213,27 @@ install_aur_packages() {
 #         $([ "$optimus_backend" = optimus-manager ] && echo optimus-manager)
         ${extra_packages_aur[@]}
     )
-
+    
     for package in ${packages[@]}; do echo "[DEBUG]: AUR package: ->$package<-" >> archer.log; done
 
     sed -i '/^root.*/a nobody ALL=(ALL) NOPASSWD: ALL' /mnt/etc/sudoers
 
+    #TODO: rework this kek
+    #TODO: progress feedback
+    local command="$(for i in $(seq 0 $(expr ${#packages[@]} - 1)); do
+        echo "echo -e 'XXX\n$(expr $i \* 100 / ${#packages[@]})\nInstalling ${packages[$i]}\nXXX' &&"
+        echo "sudo -u nobody bash -c 'HOME=/tmp; yay -S ${packages[$i]} --noconfirm >/dev/null 2>&1' &&"
+    done) :"
+    
     arch-chroot /mnt /bin/bash <<< "cd /tmp &&
-        curl -sO https://aur.archlinux.org/cgit/aur.git/snapshot/yay-bin.tar.gz > /dev/null 2>&1 &&
+        curl -sO https://aur.archlinux.org/cgit/aur.git/snapshot/yay-bin.tar.gz >/dev/null 2>&1 &&
         sudo -u nobody tar xfvz yay-bin.tar.gz > /dev/null 2>&1 &&
         cd yay-bin &&
         sudo -u nobody makepkg -risc --noconfirm > /dev/null 2>&1 &&
         cd /tmp &&
         rm yay-bin.tar.gz &&
         rm -rf yay-bin &&
-        for package in ${packages[@]}; do
-            echo -e 'XXX\n0\nInstalling \$package\nXXX'
-            sudo -u nobody bash -c 'HOME=/tmp; yay -S \$package --noconfirm'
-        done"
+        $command"
 
     sed -i '/^nobody.*/d' /mnt/etc/sudoers
 

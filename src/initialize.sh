@@ -1,3 +1,4 @@
+#TODO: dracula color theme
 set_terminal_colors() {
     setterm -blank 0 -powersave off
     echo -ne "\e]P02e3436" #black
@@ -38,10 +39,4 @@ set_newt_colors() {
         fullscale=,cyan
         compactbutton=cyan,black
         actsellistbox=black,cyan'
-}
-
-set_ntp() {
-    timedatectl set-ntp true
-
-    echo "[DEBUG]: network time protocol: ->$(timedatectl show | grep '^NTP=' | cut -d'=' -f 2)<-" >> archer.log
 }
