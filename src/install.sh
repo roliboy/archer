@@ -173,7 +173,7 @@ install_pacman_packages() {
 
     for package in ${packages[@]}; do echo "[DEBUG]: package: ->$package<-" >> archer.log; done
 
-    pacstrap /mnt ${packages[@]} | awk '
+    pacstrap /mnt ${packages[@]} 2>/dev/null | awk '
         /^:: Synchronizing package databases\.\.\.$/ {
             print "XXX\n0\nSynchronizing package databases\nXXX"
         }

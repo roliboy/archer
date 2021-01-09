@@ -7,7 +7,7 @@ Automated Arch Linux install script for brainlets
 ### anon what do
 
 - download arch
-- make usb with arch
+- burn arch
 - boot arch
 - `curl -s roliboy.ml/archer | bash`
 - done
@@ -36,55 +36,59 @@ you will be asked to enter the ip address of the machine on which the netcache s
 
 ### features
 
-- GUI (sort-of) installer
-- detect cpu vendor and install correct microcode
-- detect gpu configuration and install proprietary drivers (and gpu switching for optimus laptops)
-- detect battery and install tlp for optimizing power consumption
-- detect wireless and install tlp-rdw
-- detect ssd and enable automatic trimming
-- automatically download mirrorlist from selected country
-- automatically generate selected locale
-- automatically set timezone and ntp
-- set root password
-- create user
-- multiple DE/WM choices (only KDE for now)
-- enable autologin
-- set up archstrike repository
-- automatic partitioning
-- minimal base installation
-- install selected packages from aur
-- automatic fstab generation
-- install bootloader
-- auto-configure network
-- auto-configure pacman
-- auto-configure tlp
-- auto-configure journald
-- auto-configure coredump
+- menu based TUI installer
+- hardware detection
+- - boot mode (bios/uefi) : for bootloader
+- - cpu (intel/amd) : for microcode
+- - gpu (intel/amd/nvidia/nvidia optimus) : for graphics driver
+- - battery : for tlp and battery life optimization
+- - wireless : for tlp-rdw and more battery life optimization
+- - bluetooth : for drivers and optional bluetooth headphone support
+- - ssd : for trimming
+- pacman mirror ranking [wip, only ping based ranking for now]
+- desktop environment / window manager selection
+- user creation with custom login shell
+- multiple backends for nvidia optimus
+- netcache : use an already existing arch install to speed up the installation
+- archstrike repository
+- add additional packages to the install (aur supported)
+- minimal base install
+- atomatic basic configuration (pacman, tlp, journald, coredump)
 
-### planned featurs
-- shell options for new user
-- rank mirrors by speed
-- detect bluetooth and install bluez (and option for installing bluez-pulseaudio for bluetooth headphones/speakers)
-- multiple backends for gpu switching (currently only bumblebee is supported)
-- add auto-cpufreq for automatic cpu speed and power optimization
+### screenshots
+timezone selection
+![timezone selection](/images/timezone-selection.png)
 
-### setup
+shell selection
+![shell selection](/images/shell-selection.png)
+
+optional features selection
+![optional features selection](/images/optional-features-selection.png)
+
+desktop environment selection
+![desktop environment selection](/images/de-wm-selection.png)
+
+mirrorlist ranking
+![mirrorlist ranking](/images/mirrorlist-ranking.png)
+
+installation
+![installation](/images/downloading-packages.png)
+
+### setup for testing
 
 packages required
 - qemu
 - edk2-ovmf
 
-download the official arch iso and create a qemu disk image
-
-```bash
-$ ./test.sh setup
-```
-
-start the emulator with
-
-```bash
-./test.sh run
-```
+makefile targets
+- `make all`: makes targets `archer` and `netcache`
+- `make archer`: concatenates individual source files into a single bash script
+- `make netcache`: creates netcache script
+- `make test`: starts a qemu virtual machine with the official arch iso
+- `make boot`: starts a qemu virtual machine booting from virtual disk image
+- `make setup`: downloads official arch iso and creates virtual disk image
+- `make clean`: removes the created scripts
+- `make purge`: removes the downloaded arch iso and the created disk image
 
 the guest machine can also be accessed through ssh on port 10022
 
