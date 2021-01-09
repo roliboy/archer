@@ -93,20 +93,20 @@ install_pacman_packages() {
     local packages=(
         base
         sudo
-        
+
         make
         patch
-        
+
         fakeroot
         binutils
-        
+
 #         :thinking_face:
         pkgconf
         gcc
 
         linux
         linux-firmware
-        
+
         $([ "$cpu_vendor" = intel ] && echo intel-ucode)
         $([ "$cpu_vendor" = amd ] && echo amd-ucode)
 
@@ -133,37 +133,13 @@ install_pacman_packages() {
 
 #         TODO: add menu bar
         $([ "$desktop_environment" = bspwm ] && echo bspwm sxhkd)
-        
+
         $([ "$desktop_environment" = dwm ] && echo xorg-server xorg-xinit xorg-fonts-100dpi)
-        
-        $([ "$desktop_environment" = i3 ] && echo i3-gaps)
-        $([ "$desktop_environment" = 'KDE Plasma' ] && echo plasma)
-        
-#         bluedevil
-#         breeze-gtk
-#         kde-gtk-config
-#         kdeplasma-addons
-#         kgamma5
-#         khotkeys
-#         kinfocenter
-#         kscreen
-#         kwayland-integration
-#         kwrited
-#         plasma-browser-integration
-#         plasma-desktop
-#         plasma-disks
-#         plasma-nm
-#         plasma-pa
-#         plasma-thunderbolt
-#         #not too usefull
-#         plasma-vault
-#         plasma-workspace
-#         plasma-workspace-wallpapers
-#         powerdevil
-#         sddm-kcm
-#         #not sure what this does
-#         xdg-desktop-portal-kde
-#         
+
+        $([ "$desktop_environment" = i3 ] && echo i3-gaps xorg-server xorg-xinit)
+
+        $([ "$desktop_environment" = 'KDE Plasma' ] && echo bluedevil breeze-gtk kde-gtk-config kdeplasma-addons kgamma5 khotkeys kinfocenter kscreen kwayland-integration kwrited plasma-browser-integration plasma-desktop plasma-disks plasma-nm plasma-pa plasma-thunderbolt plasma-vault plasma-workspace plasma-workspace-wallpapers powerdevil sddm-kcm xdg-desktop-portal-kde)
+
         #$([ "$feature_bluetooth_audio" = yes ] && echo pulseaudio-bluetooth)
 
 #TODO: bluetooth
@@ -213,7 +189,9 @@ install_aur_packages() {
 #         $([ "$optimus_backend" = optimus-manager ] && echo optimus-manager)
         ${extra_packages_aur[@]}
     )
-    
+
+    [ ${#packages[@]} = 0 ] && return
+
     for package in ${packages[@]}; do echo "[DEBUG]: AUR package: ->$package<-" >> archer.log; done
 
     sed -i '/^root.*/a nobody ALL=(ALL) NOPASSWD: ALL' /mnt/etc/sudoers
@@ -224,7 +202,7 @@ install_aur_packages() {
         echo "echo -e 'XXX\n$(expr $i \* 100 / ${#packages[@]})\nInstalling ${packages[$i]}\nXXX' &&"
         echo "sudo -u nobody bash -c 'HOME=/tmp; yay -S ${packages[$i]} --noconfirm >/dev/null 2>&1' &&"
     done) :"
-    
+
     arch-chroot /mnt /bin/bash <<< "cd /tmp &&
         curl -sO https://aur.archlinux.org/cgit/aur.git/snapshot/yay-bin.tar.gz >/dev/null 2>&1 &&
         sudo -u nobody tar xfvz yay-bin.tar.gz > /dev/null 2>&1 &&

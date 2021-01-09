@@ -1,3 +1,4 @@
+#TODO: redirect errors to file
 #TODO: send shutdown signal to netcache
 #TODO: improve aur debug log
 #TODO: dual-boot support?

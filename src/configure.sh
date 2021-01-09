@@ -57,8 +57,8 @@ enable_services() {
     [ "$optimus_backend" = optimus-manager ] && arch-chroot /mnt /bin/bash <<< "systemctl enable optimus-manager.service > /dev/null 2>&1"
 
     [ "$desktop_environment" = dwm ] && echo 'exec dwm' > "/mnt/home/$username/.xinitrc"
+    [ "$desktop_environment" = i3 ] && echo 'exec i3' > "/mnt/home/$username/.xinitrc"
     [ "$desktop_environment" = 'KDE Plasma' ] && arch-chroot /mnt /bin/bash <<< "systemctl enable sddm.service"
-#       bluetooth
 }
 
 enable_archstrike_repository() {
