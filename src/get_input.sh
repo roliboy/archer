@@ -105,7 +105,7 @@ get_optional_features() {
 }
 
 get_netcache_ip() {
-    whiptail --title 'Netcache IP' --inputbox "Enter the IP address of the machine running the netcache server: " 0 0 3>&1 1>&2 2>&3
+    whiptail --title 'Netcache IP' --inputbox "Enter the IP address of the machine running the netcache server: " 0 $(expr $(tput cols) \* 3 / 4) 3>&1 1>&2 2>&3
 }
 
 get_extra_packages() {

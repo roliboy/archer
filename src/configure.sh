@@ -1,6 +1,3 @@
-#TODO: netcache dialog width
-#TODO: kill reflector
-
 configure_pacman() {
     sed -i '/Color/s/^#//g' /mnt/etc/pacman.conf
     sed -i '/CheckSpace/s/^#//g' /mnt/etc/pacman.conf

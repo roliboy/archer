@@ -1,3 +1,4 @@
+#TODO: bigger font for readme screenshots
 #TODO: send shutdown signal to netcache
 #TODO: improve aur debug log
 #TODO: dual-boot support?
@@ -17,6 +18,7 @@ set_ntp
 
 #TODO: maybe remove this
 sleep 2
+systemctl stop reflector
 
 cp /etc/pacman.conf /etc/pacman.conf.bak
 

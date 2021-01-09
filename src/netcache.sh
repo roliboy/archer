@@ -49,7 +49,7 @@ with socketserver.TCPServer(("", 1337), NetCache) as httpd:
     httpd.server_close()
 '
 
-#rm netcache.db
-#rm netcache.db.tar.gz
-#rm netcache.files
-#rm netcache.files.tar.gz
+rm netcache.db
+rm netcache.db.tar.gz
+rm netcache.files
+rm netcache.files.tar.gz
