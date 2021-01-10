@@ -3,7 +3,7 @@ create_partitions() {
         umount -l ${selected_drive}$partition > /dev/null 2>&1
         parted -s $selected_drive rm $partition
 
-        echo "[DEBUG]: unmounting and deleting: ->${selected_drive}$partition<-" >> archer.log
+        echo "[INFO]: unmounting and deleting: ${selected_drive}$partition" >> archer.log
     done
 
     parted -s $selected_drive mklabel gpt
@@ -20,8 +20,8 @@ create_partitions() {
     mount ${selected_drive}1 /mnt/boot
 
 
-    echo "[DEBUG]: boot partition created and mounted: ->$([ -n "$(findmnt -o TARGET,FSTYPE ${selected_drive}1 | grep /boot | grep vfat)" ] && echo yes || echo no)<-" >> archer.log
-    echo "[DEBUG]: root partition created and mounted: ->$([ -n "$(findmnt -o TARGET,FSTYPE ${selected_drive}2 | grep / | grep ext4)" ] && echo yes || echo no)<-" >> archer.log
+    echo "[INFO]: boot partition created and mounted: ->$([ -n "$(findmnt -o TARGET,FSTYPE ${selected_drive}1 | grep /boot | grep vfat)" ] && echo yes || echo no)<-" >> archer.log
+    echo "[INFO]: root partition created and mounted: ->$([ -n "$(findmnt -o TARGET,FSTYPE ${selected_drive}2 | grep / | grep ext4)" ] && echo yes || echo no)<-" >> archer.log
 }
 
 download_mirrorlist() {
@@ -32,7 +32,7 @@ download_mirrorlist() {
     curl -so /etc/pacman.d/mirrorlist "$api_query"
     sed -i '/^#.*Server /s/^#//' /etc/pacman.d/mirrorlist
 
-    awk '/Server/ {print "[DEBUG]: mirror:", "->"$3"<-"}' /etc/pacman.d/mirrorlist >> archer.log
+    awk '/Server/ {print "[INFO]: mirror:", $3}' /etc/pacman.d/mirrorlist >> archer.log
 }
 
 #TODO: rank by file download speed
@@ -81,12 +81,13 @@ rank_mirrors() {
     cat /tmp/mirrorlist-ranked | sort -nk1 | awk '{ print "Server = "$2 }' > /etc/pacman.d/mirrorlist
     rm /tmp/ping-result
     rm /tmp/mirrorlist-ranked
+#     TODO: debug log
 }
 
 enable_netcache() {
     sed -i "/\[core\]/i[netcache]\nSigLevel = Optional TrustAll\nServer = http://$netcache_ip:1337/\n" /etc/pacman.conf
 
-    echo "[DEBUG]: netcache repository added to pacman.conf: ->$([ -n "$(grep netcache /etc/pacman.conf)" ] && echo yes || echo no)<-" >> archer.log
+    echo "[INFO]: netcache repository added to pacman.conf: $([ -n "$(grep netcache /etc/pacman.conf)" ] && echo yes || echo no)" >> archer.log
 }
 
 install_pacman_packages() {
@@ -99,13 +100,14 @@ install_pacman_packages() {
 
         fakeroot
         binutils
+        
+# TODO: something about this?
 
-#         :thinking_face:
         pkgconf
         gcc
 
-        linux
-        linux-firmware
+#         linux
+#         linux-firmware
 
         $([ "$cpu_vendor" = intel ] && echo intel-ucode)
         $([ "$cpu_vendor" = amd ] && echo amd-ucode)
@@ -147,7 +149,7 @@ install_pacman_packages() {
         ${extra_packages_official[@]}
     )
 
-    for package in ${packages[@]}; do echo "[DEBUG]: package: ->$package<-" >> archer.log; done
+    for package in ${packages[@]}; do echo "[INFO]: package: $package" >> archer.log; done
 
     pacstrap /mnt ${packages[@]} 2>/dev/null | awk '
         /^:: Synchronizing package databases\.\.\.$/ {
@@ -192,7 +194,7 @@ install_aur_packages() {
 
     [ ${#packages[@]} = 0 ] && return
 
-    for package in ${packages[@]}; do echo "[DEBUG]: AUR package: ->$package<-" >> archer.log; done
+    for package in ${packages[@]}; do echo "[INFO]: AUR package: $package" >> archer.log; done
 
     sed -i '/^root.*/a nobody ALL=(ALL) NOPASSWD: ALL' /mnt/etc/sudoers
 
@@ -215,7 +217,7 @@ install_aur_packages() {
 
     sed -i '/^nobody.*/d' /mnt/etc/sudoers
 
-    echo "[DEBUG]: aur packages installed: ->$(arch-chroot /mnt /bin/bash <<< 'pacman -Qm | wc -l')<-" >> archer.log
+    echo "[INFO]: aur packages installed: $(arch-chroot /mnt /bin/bash <<< 'pacman -Qm | wc -l')" >> archer.log
 }
 
 #TODO: other bootloader options
@@ -239,14 +241,14 @@ install_bootloader() {
 
     echo "options root=UUID=$root_uuid rw" >> /mnt/boot/loader/entries/arch.conf
 
-    echo "[DEBUG]: bootloader installed: ->$([ -n "$(grep UUID /mnt/boot/loader/entries/arch.conf)" ] && echo yes || echo no)<-" >> archer.log
+    echo "[INFO]: bootloader installed: $([ -n "$(grep UUID /mnt/boot/loader/entries/arch.conf)" ] && echo yes || echo no)" >> archer.log
 }
 
 generate_fstab() {
     genfstab -U /mnt >> /mnt/etc/fstab
     sed -i 's/relatime/noatime/g' /mnt/etc/fstab
 
-    echo "[DEBUG]: fstab generated: ->$([ -n "$(grep noatime /mnt/etc/fstab)" ] && echo yes || echo no)<-" >> archer.log
+    echo "[INFO]: fstab generated: $([ -n "$(grep noatime /mnt/etc/fstab)" ] && echo yes || echo no)" >> archer.log
 }
 
 generate_locale() {
@@ -254,7 +256,7 @@ generate_locale() {
         locale-gen > /dev/null 2>&1"
     echo "LANG=$locale" > /mnt/etc/locale.conf
 
-    echo "[DEBUG]: locale generated: ->$([ -n "$(grep $locale /mnt/etc/locale.conf)" ] && echo yes || echo no)<-" >> archer.log
+    echo "[INFO]: locale generated: $([ -n "$(grep $locale /mnt/etc/locale.conf)" ] && echo yes || echo no)" >> archer.log
 }
 
 set_timezone() {
@@ -262,7 +264,7 @@ set_timezone() {
         ln -sf /usr/share/zoneinfo/$timezone /etc/localtime && \
         hwclock --systohc"
 
-    echo "[DEBUG]: timezone configured: ->$([ -n "$(ls -la /mnt/etc/localtime | grep $timezone)" ] && echo yes || echo no)<-" >> archer.log
+    echo "[INFO]: timezone configured: $([ -n "$(ls -la /mnt/etc/localtime | grep $timezone)" ] && echo yes || echo no)" >> archer.log
 }
 
 configure_network() {
@@ -271,11 +273,11 @@ configure_network() {
     echo "::1        localhost" >> /mnt/etc/hosts
     echo "127.0.1.1  $hostname.localdomain $hostname" >> /mnt/etc/hosts
 
-    echo "[DEBUG]: network configured: ->$([ -n "$(grep $hostname /mnt/etc/hosts)" ] && echo yes || echo no)<-" >> archer.log
+    echo "[INFO]: network configured: $([ -n "$(grep $hostname /mnt/etc/hosts)" ] && echo yes || echo no)" >> archer.log
 }
 
 set_root_password() {
     arch-chroot /mnt /bin/bash <<< "yes $password | passwd > /dev/null 2>&1"
 
-    echo "[DEBUG]: password set for root: ->$([ -n "$(grep root /mnt/etc/shadow | grep '\$6\$')" ] && echo yes || echo no)<-" >> archer.log
+    echo "[INFO]: password set for root: $([ -n "$(grep root /mnt/etc/shadow | grep '\$6\$')" ] && echo yes || echo no)" >> archer.log
 }
