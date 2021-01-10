@@ -3,6 +3,7 @@
 # TODO: improve aur debug log
 # TODO: dual-boot support?
 # TODO: util functions for logging
+# TODO: show log on error
 
 echo "[LOG]" > archer.log
 

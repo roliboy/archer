@@ -2,12 +2,13 @@ detect_boot_mode() {
     [[ -d /sys/firmware/efi/efivars ]] && echo UEFI || echo BIOS
 }
 
+# TODO: return unknown if the cpu is neither intel nor amd
 detect_cpu_vendor() {
     grep -q GenuineIntel /proc/cpuinfo 2>archer.err && echo intel
     grep -q AuthenticAMD /proc/cpuinfo 2>archer.err && echo amd
 }
 
-# TODO:rework this
+# TODO: rework this
 # TODO: return unknown on empty
 detect_gpu_configuration() {
     lspci | grep VGA | grep -i intel && local vga_controller=intel

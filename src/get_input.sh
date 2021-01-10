@@ -13,7 +13,7 @@ get_drive() {
 get_mirrorlist_country() {
     whiptail --title 'Mirrorlist' \
         --menu 'Select country: ' \
-        $(expr $(tput lines) \* 3 / 4) 32 $(expr $(tput lines) \* 3 / 4 - 8) \
+        $((`tput lines` * 3 / 4)) 32 $((`tput lines` * 3 / 4 - 8)) \
         $(
             curl -s https://archlinux.org/mirrorlist/ |
             awk -F'[<">]' '/<option value=".*">.*<\/option>/ { gsub(" ", "-", $5); print $3, $5 }'
@@ -24,7 +24,7 @@ get_mirrorlist_country() {
 get_locale() {
     whiptail --title 'Locale' \
         --menu 'Select locale: ' \
-        $(expr $(tput lines) \* 3 / 4) 35 $(expr $(tput lines) \* 3 / 4 - 8) \
+        $((`tput lines` * 3 / 4)) 35 $((`tput lines` * 3 / 4 - 8)) \
         $(
             awk -F '#' '/^#[a-z]/ { print $2 } /^[a-z]/ { print $1 }' /etc/locale.gen
         ) \
@@ -34,7 +34,7 @@ get_locale() {
 get_timezone() {
     whiptail --title 'Timezone' \
         --menu 'Select timezone: ' \
-        $(expr $(tput lines) \* 3 / 4) 33 $(expr $(tput lines) \* 3 / 4 - 8) \
+        $((`tput lines` * 3 / 4)) 33 $((`tput lines` * 3 / 4 - 8)) \
         $(
             for zone in $(ls -F /usr/share/zoneinfo | grep \/$); do
                 for region in $(ls /usr/share/zoneinfo/$zone); do
@@ -46,20 +46,20 @@ get_timezone() {
 }
 
 get_hostname() {
-    whiptail --title 'Hostname' --inputbox 'Enter hostname:' 0 $(expr $(tput cols) \* 3 / 4) 3>&1 1>&2 2>&3
+    whiptail --title 'Hostname' --inputbox 'Enter hostname:' 0 $((`tput cols` * 3 / 4)) 3>&1 1>&2 2>&3
 }
 
 get_username() {
-    whiptail --title 'Username' --inputbox 'Enter username:' 0 $(expr $(tput cols) \* 3 / 4) 3>&1 1>&2 2>&3
+    whiptail --title 'Username' --inputbox 'Enter username:' 0 $((`tput cols` * 3 / 4)) 3>&1 1>&2 2>&3
 }
 
 get_password() {
-    whiptail --title 'Password' --passwordbox 'Enter password:' 8 $(expr $(tput cols) \* 3 / 4) 3>&1 1>&2 2>&3
+    whiptail --title 'Password' --passwordbox 'Enter password:' 8 $((`tput cols` * 3 / 4)) 3>&1 1>&2 2>&3
 }
 
 #TODO: implement these
 get_desktop_environment() {
-    whiptail --title 'DE/WM' --radiolist 'Select desktop environment / window manager:' 0 $(expr $(tput cols) \* 3 / 4) 0 \
+    whiptail --title 'DE/WM' --radiolist 'Select desktop environment / window manager:' 0 $((`tput cols` * 3 / 4)) 0 \
         'bspwm' 'Tiling window manager that represents windows as the leaves of a full binary tree' OFF \
         'Budgie' '[WIP]Desktop environment designed with the modern user in mind, that focuses on simplicity and elegance' OFF \
         'Cinnamon' '[WIP]Combines a traditional desktop layout with modern graphical effects' OFF \
@@ -77,7 +77,7 @@ get_desktop_environment() {
 }
 
 get_login_shell() {
-    whiptail --title 'Shell' --radiolist 'Select user'\''s default shell:' 0 $(expr $(tput cols) \* 3 / 4) 0 \
+    whiptail --title 'Shell' --radiolist 'Select user'\''s default shell:' 0 $((`tput cols` * 3 / 4)) 0 \
         'bash' 'Bourne Again Shell, default shell of many distributions' ON \
         'fish' 'Friendly Interactive Shell, user-friendly and easily customizable' OFF \
         'zsh' 'Z Shell, bash-compatible with spelling correction, approximate completion and recursive path expansion'  OFF \
@@ -85,7 +85,7 @@ get_login_shell() {
 }
 
 get_optimus_backend() {
-    whiptail --title 'Optimus' --radiolist 'Select backend for GPU switching:' 0 $(expr $(tput cols) \* 3 / 4) 0 \
+    whiptail --title 'Optimus' --radiolist 'Select backend for GPU switching:' 0 $((`tput cols` * 3 / 4)) 0 \
         'bumblebee' 'allows running selected applications on the dedicated GPU while using integrated graphics for everything else (sacrificing some performance)' ON \
         'optimus-manager' 'switch cards with a single command, achieving maximum performance out of the dedicated GPU (requires X server restart after switch)'  OFF \
         'none' 'no backed or nvidia driver will be installed' OFF \
@@ -93,7 +93,7 @@ get_optimus_backend() {
 }
 
 get_optional_features() {
-    whiptail --title 'Optional features' --checklist 'Select optional features' --separate-output 0 $(expr $(tput cols) \* 3 / 4) 0 \
+    whiptail --title 'Optional features' --checklist 'Select optional features' --separate-output 0 $((`tput cols` * 3 / 4)) 0 \
         'netcache' 'Use netcache during installation' OFF \
         'autologin' 'Get automatically logged in on boot' OFF \
         'rank mirrors' 'Rank pacman mirrors by speed' OFF \
@@ -105,9 +105,9 @@ get_optional_features() {
 }
 
 get_netcache_ip() {
-    whiptail --title 'Netcache IP' --inputbox "Enter the IP address of the machine running the netcache server: " 0 $(expr $(tput cols) \* 3 / 4) 3>&1 1>&2 2>&3
+    whiptail --title 'Netcache IP' --inputbox "Enter the IP address of the machine running the netcache server: " 0 $((`tput cols` * 3 / 4)) 3>&1 1>&2 2>&3
 }
 
 get_extra_packages() {
-    whiptail --title 'Extra packages' --inputbox "Enter space separated package names: " 0 $(expr $(tput cols) \* 3 / 4) 3>&1 1>&2 2>&3
+    whiptail --title 'Extra packages' --inputbox "Enter space separated package names: " 0 $((`tput cols` * 3 / 4)) 3>&1 1>&2 2>&3
 }

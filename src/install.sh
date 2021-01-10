@@ -20,15 +20,15 @@ create_partitions() {
     mount ${selected_drive}1 /mnt/boot
 
 
-    echo "[INFO]: boot partition created and mounted: ->$([ -n "$(findmnt -o TARGET,FSTYPE ${selected_drive}1 | grep /boot | grep vfat)" ] && echo yes || echo no)<-" >> archer.log
-    echo "[INFO]: root partition created and mounted: ->$([ -n "$(findmnt -o TARGET,FSTYPE ${selected_drive}2 | grep / | grep ext4)" ] && echo yes || echo no)<-" >> archer.log
+    echo "[INFO]: boot partition created and mounted: $(findmnt -o TARGET,FSTYPE ${selected_drive}1 | grep /boot | grep -q vfat && echo yes || echo no)" >> archer.log
+    echo "[INFO]: root partition created and mounted: $(findmnt -o TARGET,FSTYPE ${selected_drive}2 | grep / | grep -q ext4 && echo yes || echo no)" >> archer.log
 }
 
 download_mirrorlist() {
-    api_endpoint="https://archlinux.org/mirrorlist/?"
-    api_param_country="country=$mirrorlist_country&"
-    api_param_protocol="protocol=http&protocol=https&ip_version=4"
-    api_query="${api_endpoint}${api_param_country}${api_param_protocol}"
+    local api_endpoint="https://archlinux.org/mirrorlist/?"
+    local api_param_country="country=$mirrorlist_country&"
+    local api_param_protocol="protocol=http&protocol=https&ip_version=4"
+    local api_query="${api_endpoint}${api_param_country}${api_param_protocol}"
     curl -so /etc/pacman.d/mirrorlist "$api_query"
     sed -i '/^#.*Server /s/^#//' /etc/pacman.d/mirrorlist
 
@@ -87,7 +87,7 @@ rank_mirrors() {
 enable_netcache() {
     sed -i "/\[core\]/i[netcache]\nSigLevel = Optional TrustAll\nServer = http://$netcache_ip:1337/\n" /etc/pacman.conf
 
-    echo "[INFO]: netcache repository added to pacman.conf: $([ -n "$(grep netcache /etc/pacman.conf)" ] && echo yes || echo no)" >> archer.log
+    echo "[INFO]: netcache repository added to pacman.conf: $(grep -q netcache /etc/pacman.conf && echo yes || echo no)" >> archer.log
 }
 
 install_pacman_packages() {
@@ -109,8 +109,8 @@ install_pacman_packages() {
 #         linux
 #         linux-firmware
 
-        $([ "$cpu_vendor" = intel ] && echo intel-ucode)
-        $([ "$cpu_vendor" = amd ] && echo amd-ucode)
+        $([[ $cpu_vendor = intel ]] && echo intel-ucode)
+        $([[ $cpu_vendor = amd ]] && echo amd-ucode)
 
         networkmanager
 
@@ -126,21 +126,21 @@ install_pacman_packages() {
 #        $([ "$optimus_backend" = optimus-manager ] && echo optimus-manager) AUR package
 
 
-        $([ "$login_shell" = bash ] && echo bash)
-        $([ "$login_shell" = fish ] && echo fish)
-        $([ "$login_shell" = zsh ] && echo zsh)
+        $([[ $login_shell = bash ]] && echo bash)
+        $([[ $login_shell = fish ]] && echo fish)
+        $([[ $login_shell = zsh ]] && echo zsh)
 
-        $([ "$has_battery" = yes ] && echo tlp)
-        $([ "$has_battery" = yes ] && [ "$has_wireless" = yes ] && echo tlp-rdw)
+        $([[ $has_battery = yes ]] && echo tlp)
+        $([[ $has_battery = yes ]] && [[ $has_wireless = yes ]] && echo tlp-rdw)
 
 #         TODO: add menu bar
-        $([ "$desktop_environment" = bspwm ] && echo bspwm sxhkd)
+        $([[ $desktop_environment = bspwm ]] && echo bspwm sxhkd)
 
-        $([ "$desktop_environment" = dwm ] && echo xorg-server xorg-xinit xorg-fonts-100dpi)
+        $([[ $desktop_environment = dwm ]] && echo xorg-server xorg-xinit xorg-fonts-100dpi)
 
-        $([ "$desktop_environment" = i3 ] && echo i3-gaps xorg-server xorg-xinit)
+        $([[ $desktop_environment = i3 ]] && echo i3-gaps xorg-server xorg-xinit)
 
-        $([ "$desktop_environment" = 'KDE Plasma' ] && echo bluedevil breeze-gtk kde-gtk-config kdeplasma-addons kgamma5 khotkeys kinfocenter kscreen kwayland-integration kwrited plasma-browser-integration plasma-desktop plasma-disks plasma-nm plasma-pa plasma-thunderbolt plasma-vault plasma-workspace plasma-workspace-wallpapers powerdevil sddm-kcm xdg-desktop-portal-kde)
+        $([[ $desktop_environment = 'KDE Plasma' ]] && echo bluedevil breeze-gtk kde-gtk-config kdeplasma-addons kgamma5 khotkeys kinfocenter kscreen kwayland-integration kwrited plasma-browser-integration plasma-desktop plasma-disks plasma-nm plasma-pa plasma-thunderbolt plasma-vault plasma-workspace plasma-workspace-wallpapers powerdevil sddm-kcm xdg-desktop-portal-kde)
 
         #$([ "$feature_bluetooth_audio" = yes ] && echo pulseaudio-bluetooth)
 
@@ -187,12 +187,12 @@ install_pacman_packages() {
 #TODO: progress feedback
 install_aur_packages() {
     local packages=(
-        $([ "$desktop_environment" = dwm ] && echo dwm)
+        $([[ $desktop_environment = dwm ]] && echo dwm)
 #         $([ "$optimus_backend" = optimus-manager ] && echo optimus-manager)
         ${extra_packages_aur[@]}
     )
 
-    [ ${#packages[@]} = 0 ] && return
+    [[ ${#packages[@]} = 0 ]] && return
 
     for package in ${packages[@]}; do echo "[INFO]: AUR package: $package" >> archer.log; done
 
@@ -217,6 +217,7 @@ install_aur_packages() {
 
     sed -i '/^nobody.*/d' /mnt/etc/sudoers
 
+    # TODO: check each individual package
     echo "[INFO]: aur packages installed: $(arch-chroot /mnt /bin/bash <<< 'pacman -Qm | wc -l')" >> archer.log
 }
 
@@ -227,10 +228,8 @@ install_bootloader() {
     echo 'title  Arch Linux' > /mnt/boot/loader/entries/arch.conf
     echo 'linux  /vmlinuz-linux' >> /mnt/boot/loader/entries/arch.conf
 
-    [ "$cpu_vendor" = intel ] && \
-        echo 'initrd /intel-ucode.img' >> /mnt/boot/loader/entries/arch.conf
-    [ "$cpu_vendor" = amd ] && \
-        echo 'initrd /amd-ucode.img' >> /mnt/boot/loader/entries/arch.conf
+    [[ $cpu_vendor = intel ]] && echo 'initrd /intel-ucode.img' >> /mnt/boot/loader/entries/arch.conf
+    [[ $cpu_vendor = amd ]] && echo 'initrd /amd-ucode.img' >> /mnt/boot/loader/entries/arch.conf
 
     echo 'initrd /initramfs-linux.img' >> /mnt/boot/loader/entries/arch.conf
 
@@ -241,14 +240,14 @@ install_bootloader() {
 
     echo "options root=UUID=$root_uuid rw" >> /mnt/boot/loader/entries/arch.conf
 
-    echo "[INFO]: bootloader installed: $([ -n "$(grep UUID /mnt/boot/loader/entries/arch.conf)" ] && echo yes || echo no)" >> archer.log
+    echo "[INFO]: bootloader installed: $(grep -q UUID /mnt/boot/loader/entries/arch.conf 2>/dev/null && echo yes || echo no)" >> archer.log
 }
 
 generate_fstab() {
     genfstab -U /mnt >> /mnt/etc/fstab
     sed -i 's/relatime/noatime/g' /mnt/etc/fstab
 
-    echo "[INFO]: fstab generated: $([ -n "$(grep noatime /mnt/etc/fstab)" ] && echo yes || echo no)" >> archer.log
+    echo "[INFO]: fstab generated: $(grep -q noatime /mnt/etc/fstab 2>/dev/null && echo yes || echo no)" >> archer.log
 }
 
 generate_locale() {
@@ -256,7 +255,7 @@ generate_locale() {
         locale-gen > /dev/null 2>&1"
     echo "LANG=$locale" > /mnt/etc/locale.conf
 
-    echo "[INFO]: locale generated: $([ -n "$(grep $locale /mnt/etc/locale.conf)" ] && echo yes || echo no)" >> archer.log
+    echo "[INFO]: locale generated: $(grep -q $locale /mnt/etc/locale.conf 2>/dev/null && echo yes || echo no)" >> archer.log
 }
 
 set_timezone() {
@@ -264,7 +263,7 @@ set_timezone() {
         ln -sf /usr/share/zoneinfo/$timezone /etc/localtime && \
         hwclock --systohc"
 
-    echo "[INFO]: timezone configured: $([ -n "$(ls -la /mnt/etc/localtime | grep $timezone)" ] && echo yes || echo no)" >> archer.log
+    echo "[INFO]: timezone configured: $(ls -la /mnt/etc/localtime | grep -q $timezone && echo yes || echo no)" >> archer.log
 }
 
 configure_network() {
@@ -273,11 +272,11 @@ configure_network() {
     echo "::1        localhost" >> /mnt/etc/hosts
     echo "127.0.1.1  $hostname.localdomain $hostname" >> /mnt/etc/hosts
 
-    echo "[INFO]: network configured: $([ -n "$(grep $hostname /mnt/etc/hosts)" ] && echo yes || echo no)" >> archer.log
+    echo "[INFO]: network configured: $(grep -q $hostname /mnt/etc/hosts 2>/dev/null && echo yes || echo no)" >> archer.log
 }
 
 set_root_password() {
     arch-chroot /mnt /bin/bash <<< "yes $password | passwd > /dev/null 2>&1"
 
-    echo "[INFO]: password set for root: $([ -n "$(grep root /mnt/etc/shadow | grep '\$6\$')" ] && echo yes || echo no)" >> archer.log
+    echo "[INFO]: password set for root: $(grep root /mnt/etc/shadow 2>/dev/null | grep -q '\$6\$' && echo yes || echo no)" >> archer.log
 }
