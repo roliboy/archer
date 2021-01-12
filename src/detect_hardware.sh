@@ -22,10 +22,11 @@ detect_gpu_configuration() {
     [[ $vga_controller = nvidia ]] && local configuration=nvidia
     [[ $vga_controller = intel ]] && [[ $gfx_accelerator = nvidia ]] && local configuration=optimus
 
-    echo "$configuration"
+    echo $configuration
 }
 
 detect_battery() {
+    [[ -z "$(ls -A /sys/class/power_supply)" ]] && echo no && return
     grep -qi battery /sys/class/power_supply/*/type 2>archer.err && echo yes || echo no
 }
 

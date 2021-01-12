@@ -8,134 +8,134 @@
 echo "[LOG]" > archer.log
 
 boot_mode=$(detect_boot_mode)
-echo "[INFO]: boot mode: $boot_mode" >> archer.log
+info "boot mode: $boot_mode"
 
-[[ $boot_mode != UEFI ]] && echo "[ERROR]: boot mode not supported" >> archer.log
-[[ $boot_mode != UEFI ]] && exit 0
+[[ $boot_mode != UEFI ]] && error "$boot_mode boot mode not supported"
 
 set_terminal_colors
-set_newt_colors
+set_dialog_colors
 
-systemctl stop reflector
-timedatectl set-ntp true
-sleep 5
+# systemctl stop reflector
+# timedatectl set-ntp true
+# sleep 5
 
 cp /etc/pacman.conf /etc/pacman.conf.bak
 
 cpu_vendor=$(detect_cpu_vendor)
-echo "[INFO]: cpu vendor: $cpu_vendor" >> archer.log
+info "cpu vendor: $cpu_vendor"
+check_stderr && warn "could not detect CPU vendor"
+
 gpu_configuration=$(detect_gpu_configuration)
-echo "[INFO]: gpu configuration: $gpu_configuration" >> archer.log
+info "gpu configuration: $gpu_configuration"
+
 has_battery=$(detect_battery)
-echo "[INFO]: battery: $has_battery" >> archer.log
+info "battery: $has_battery"
+check_stderr && warn "error occured while checking for battery"
+
 has_wireless=$(detect_wireless)
-echo "[INFO]: wireless: $has_wireless" >> archer.log
+info "wireless: $has_wireless"
+
 has_bluetooth=$(detect_bluetooth)
-echo "[INFO]: bluetooth: $has_bluetooth" >> archer.log
+info "bluetooth: $has_bluetooth"
+
 has_ssd=$(detect_ssd)
-echo "[INFO]: ssd: $has_ssd" >> archer.log
-
-[[ -s archer.err ]] && echo -ne "[ERROR]: " >> archer.log && cat archer.err >> archer.log && rm archer.err
-
-
+info "ssd: $has_ssd"
+check_stderr && warn "could not query ssd information"
 
 selected_drive=$(get_drive)
-[[ -z $selected_drive ]] && echo "[ERROR]: no drive selected" >> archer.log && exit
-echo "[INFO]: selected drve: $selected_drive" >> archer.log
+[[ -z $selected_drive ]] && error 'no drive selected'
+info "selected drve: $selected_drive"
 
 mirrorlist_country=$(get_mirrorlist_country)
-[[ -z $mirrorlist_country ]] && echo "[ERROR]: no mirrorlist country selected" >> archer.log && exit
-echo "[INFO]: mirrorlist country: $mirrorlist_country" >> archer.log
+[[ -z $mirrorlist_country ]] && error 'no mirrorlist country selected'
+info "mirrorlist country: $mirrorlist_country"
 
 locale=$(get_locale)
-[[ -z $locale ]] && echo "[ERROR]: no locale selected" >> archer.log && exit
-echo "[INFO]: locale: $locale" >> archer.log
+[[ -z $locale ]] && error 'no locale selected'
+info "locale: $locale"
 
 timezone=$(get_timezone)
-[[ -z $timezone ]] && echo "[ERROR]: no timezone selected" >> archer.log && exit
-echo "[INFO]: timezone: $timezone" >> archer.log
+[[ -z $timezone ]] && error 'no timezone selected'
+info "timezone: $timezone"
 
 hostname=$(get_hostname)
-[[ -z $hostname ]] && echo "[ERROR]: empty hostname" >> archer.log && exit
-echo "[INFO]: hostname: $hostname" >> archer.log
+[[ -z $hostname ]] && error 'empty hostname'
+info "hostname: $hostname"
 
 username=$(get_username)
-[[ -z $username ]] && echo "[ERROR]: username hostname" >> archer.log && exit
-echo "[INFO]: username: $username" >> archer.log
+[[ -z $username ]] && error 'username hostname'
+info "username: $username"
 
 password=$(get_password)
-[[ -z $password ]] && echo "[ERROR]: empty password" >> archer.log && exit
-echo "[INFO]: password: $password" >> archer.log
+[[ -z $password ]] && error 'empty password'
+info "password: $password"
 
 desktop_environment=$(get_desktop_environment)
-[[ -z $desktop_environment ]] && echo "[ERROR]: no DE/WM selected" >> archer.log && exit
-echo "[INFO]: DE/WM: $desktop_environment" >> archer.log
+[[ -z $desktop_environment ]] && error 'no DE/WM selected'
+info "DE/WM: $desktop_environment"
 
 login_shell=$(get_login_shell)
-[[ -z $login_shell ]] && echo "[ERROR]: no login shell selected" >> archer.log && exit
-echo "[INFO]: login shell: $login_shell" >> archer.log
+[[ -z $login_shell ]] && error 'no login shell selected'
+info "login shell: $login_shell"
 
 if [[ $gpu_configuration = optimus ]]; then
     optimus_backend=$(get_optimus_backend)
-    [[ -z $optimus_backend ]] && echo "[ERROR]: no optimus backend selected" >> archer.log && exit
-    echo "[INFO]: optimus backend: $optimus_backend" >> archer.log
+    [[ -z $optimus_backend ]] && error 'no optimus backend selected'
+    info "optimus backend: $optimus_backend"
 fi
 
 optional_features=$(get_optional_features)
 
 feature_netcache=$([[ $optional_features =~ 'netcache' ]] && echo yes || echo no)
-echo "[INFO]: enable netcache: $feature_netcache" >> archer.log
+info "enable netcache: $feature_netcache"
 if [[ $feature_netcache = yes ]]; then
     netcache_ip=$(get_netcache_ip)
-    if [[ -z $netcache_ip ]]; then
-        echo "[ERROR]: netcache ip empty" >> archer.log
-        exit
-    fi
+    [[ -z $netcache_ip ]] && error 'netcache ip empty'
     if ! ping -c1 $netcache_ip >/dev/null 2>archer.err; then
-        echo "[ERROR]: $netcache_ip unreachable" >> archer.log
-        exit
+        check_stderr
+        error "$netcache_ip unreachable"
     fi
-    echo "[INFO]: netcache ip: $netcache_ip" >> archer.log
+    info "netcache ip: $netcache_ip"
 fi
 
 
 feature_autologin=$([[ $optional_features =~ 'autologin' ]] && echo yes || echo no)
-echo "[INFO]: enable autologin: $feature_autologin" >> archer.log
+info "enable autologin: $feature_autologin"
 
 feature_rank_mirrors=$([[ $optional_features =~ 'rank mirrors' ]] && echo yes || echo no)
-echo "[INFO]: enable mirror ranking: $feature_rank_mirrors" >> archer.log
+info "enable mirror ranking: $feature_rank_mirrors"
 
 feature_archstrike_repository=$([[ $optional_features =~ 'archstrike repository' ]] && echo yes || echo no)
-echo "[INFO]: enable archstrike repository: $feature_archstrike_repository" >> archer.log
+info "enable archstrike repository: $feature_archstrike_repository"
 
 feature_extra_packages=$([[ $optional_features =~ 'add extra packages' ]] && echo yes || echo no)
-echo "[INFO]: extra packages: $feature_extra_packages" >> archer.log
+info "extra packages: $feature_extra_packages"
 if [[ $feature_extra_packages = yes ]]; then
     extra_packages=$(get_extra_packages)
     extra_packages_official=()
     extra_packages_aur=()
-    
+
     pacman -Sy >/dev/null 2>archer.err
-    [[ -s archer.err ]] && echo -ne "[ERROR]: " >> archer.log && cat archer.err >> archer.log && rm archer.err
-    
+    check_stderr && error 'could not fetch pacman database'
+
     for package in $extra_packages; do
         if pacman -Ss ^$package$ >/dev/null; then
             extra_packages_official+=($package)
-            echo "[INFO]: extra official package: $package" >> archer.log
+            info "extra official package: $package"
         elif curl -sI https://aur.archlinux.org/packages/$package/ | head -n1 | grep -q 200; then
             extra_packages_aur+=($package)
-            echo "[INFO]: extra aur package: $package" >> archer.log
+            info "extra aur package: $package"
         else
-            echo "[WARN]: unknown extra package: $package" >> archer.log
+            warn "unknown extra package: $package"
         fi
     done
 fi
 
 feature_passwordless_sudo=$([[ $optional_features =~ 'passwordless sudo' ]] && echo yes || echo no)
-echo "[INFO]: enable passwordless sudo: $feature_passwordless_sudo" >> archer.log
+info "enable passwordless sudo: $feature_passwordless_sudo"
 
 feature_bluetooth_audio=$([[ $optional_features =~ 'bluetooth audio support' ]] && echo yes || echo no)
-echo "[INFO]: enable bluetooth audio support: $feature_bluetooth_audio" >> archer.log
+info "enable bluetooth audio support: $feature_bluetooth_audio"
 
 
 declare -A description

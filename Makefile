@@ -5,6 +5,8 @@ all: archer netcache
 archer:
 	@echo '#!/bin/bash' > archer
 	@echo '' >> archer
+	@cat src/util.sh >> archer
+	@echo '' >> archer
 	@cat src/initialize.sh >> archer
 	@echo '' >> archer
 	@cat src/detect_hardware.sh >> archer

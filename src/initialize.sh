@@ -33,11 +33,11 @@ set_terminal_colors() {
     echo -ne "\e]P659dffc" #darkcyan
     echo -ne "\e]PE8be9fd" #cyan
     echo -ne "\e]P7f8f8f2" #lightgrey
-    echo -ne "\e]PFf8f8f2" #white    
+    echo -ne "\e]PFf8f8f2" #white
     clear
 }
 
-set_newt_colors() {
+set_dialog_colors() {
     export NEWT_COLORS='
         root=,black
         border=cyan,black

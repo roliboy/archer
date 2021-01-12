@@ -9,7 +9,7 @@ get_drive() {
         3>&1 1>&2 2>&3
 }
 
-#TODO: dynamically determine box width
+# TODO: dynamically determine box width
 get_mirrorlist_country() {
     whiptail --title 'Mirrorlist' \
         --menu 'Select country: ' \
@@ -57,7 +57,7 @@ get_password() {
     whiptail --title 'Password' --passwordbox 'Enter password:' 8 $((`tput cols` * 3 / 4)) 3>&1 1>&2 2>&3
 }
 
-#TODO: implement these
+# TODO: implement these
 get_desktop_environment() {
     whiptail --title 'DE/WM' --radiolist 'Select desktop environment / window manager:' 0 $((`tput cols` * 3 / 4)) 0 \
         'bspwm' 'Tiling window manager that represents windows as the leaves of a full binary tree' OFF \

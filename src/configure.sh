@@ -7,8 +7,8 @@ configure_pacman() {
     echo "[INFO]: pacman configured: $(grep -q ILoveCandy /mnt/etc/pacman.conf 2>/dev/null && echo yes || echo no)" >> archer.log
 }
 
-#TODO: modify master file
-#TODO: add auto-cpufreq
+# TODO: modify master file
+# TODO: add auto-cpufreq
 configure_tlp() {
     [[ $optimus_backend = bumblebee ]] && echo 'RUNTIME_PM_DRIVER_BLACKLIST="nouveau nvidia"' > /mnt/etc/tlp.d/10-driver-blacklist.conf
 

@@ -2,7 +2,7 @@ cd /var/cache/pacman/pkg/
 
 # declare -A package_versions
 # declare -A package_files
-# 
+#
 # echo loading package files
 # total_packages="$(ls *.pkg.tar.* | wc -l)"
 # echo -ne "0/$total_packages"
@@ -18,7 +18,7 @@ cd /var/cache/pacman/pkg/
 #         package_files[$package_name]="$package_file"
 #     fi
 # done
-# 
+#
 # for package in "${package_files[@]}"; do
 #     repo-add netcache.db.tar.gz "$package"
 # done
