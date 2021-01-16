@@ -37,7 +37,8 @@ download_mirrorlist() {
     done < /etc/pacman.d/mirrorlist
 }
 
-#TODO: rank by file download speed
+# TODO: rank by file download speed
+# TODO: rework
 rank_mirrors() {
     echo -ne '' > /tmp/mirrorlist-ranked
 
@@ -48,12 +49,13 @@ rank_mirrors() {
         domain="$(cut -d'/' -f3 <<< $mirror)"
         index="$(expr $index + 1)"
 
-        ping $domain -c 8 | awk "
+        ping $domain -c 4 | awk "
         /time=/ {
             split(\$(NF-1), time, \"=\");
             total += time[2];
             crt++;
-            progress = int(100 * crt / 8);
+            completed = ((($index - 1) * 4 + crt) / (${#mirrorlist[@]} * 4))
+            progress = int(($current_progress + ${progress[rank_mirrors]} * completed) * 100 / $total_progress)
             print \"XXX\n\"progress\"\nPinging [$index/${#mirrorlist[@]}] $host - \"time[2]\" ms\nXXX\";
             fflush(stdout);
         }
@@ -153,36 +155,42 @@ install_pacman_packages() {
 
     for package in ${packages[@]}; do info "package: $package"; done
 
-    pacstrap /mnt ${packages[@]} 2>/dev/null | awk '
+    pacstrap /mnt ${packages[@]} 2>/dev/null | awk "
         /^:: Synchronizing package databases\.\.\.$/ {
-            print "XXX\n0\nSynchronizing package databases\nXXX"
+            progress = int($current_progress / $total_progress);
+            print \"XXX\n\"progress\"\nSynchronizing package databases\nXXX\"
         }
         /^Packages \([0-9]*\)/ {
-            total = substr($2, 2, length($2) - 2)
+            total = substr(\$2, 2, length(\$2) - 2)
         }
         /^downloading .*\.pkg\.tar.*\.\.\.$/ {
             dlindex++;
-            print "XXX\n"int(dlindex*100/total)"\nDownloading "substr($2, 1, match($2, /\.pkg\.tar.*/) - 1)"\nXXX"
+            progress = int(($current_progress + (${progress[install_pacman_packages]} * 0.4) * dlindex / total) * 100 / $total_progress);
+            print \"XXX\n\"progress\"\nDownloading \"substr(\$2, 1, match(\$2, /\.pkg\.tar.*/) - 1)\"\nXXX\"
         }
         /^checking .*\.\.\.$/ {
-            print "XXX\n0\nC"substr($0, 2, length($0) - 4)"\nXXX"
+            progress = int(($current_progress + (${progress[install_pacman_packages]} * 0.4)) * 100 / $total_progress);
+            print \"XXX\n\"progress\"\nC\"substr(\$0, 2, length(\$0) - 4)\"\nXXX\"
         }
         /^installing .*\.\.\.$/ {
             insindex++;
-            print "XXX\n"int(insindex*100/total)"\nInstalling "substr($2, 1, length($2) - 3)"\nXXX"
+            progress = int(($current_progress + (${progress[install_pacman_packages]} * 0.4) + (${progress[install_pacman_packages]} * 0.4) * insindex / total) * 100 / $total_progress);
+            print \"XXX\n\"progress\"\nInstalling \"substr(\$2, 1, length(\$2) - 3)\"\nXXX\"
         }
         /^:: Running post-transaction hooks\.\.\.$/ {
-            print "XXX\n0\nRunning post-transaction hooks\nXXX"
+            progress = int(($current_progress + ${progress[install_pacman_packages]}) * 0.8 / $total_progress);
+            print \"XXX\n\"progress\"\nRunning post-transaction hooks\nXXX\"
         }
         /^\([ 0-9]+\/[0-9]+\)/ {
-            progress = int(int(substr($0, 2, index($0, "/") - 2)) * 100 / int(substr($0, index($0, "/") + 1, index($0, ")") - index($0, "/") - 1)));
-            message = substr($0, index($0, ")") + 2);
-            print "XXX\n"progress"\n"substr(message, 0, length(message) - 3)"\nXXX"
+            percentage = (int(substr(\$0, 2, index(\$0, \"/\") - 2)) / int(substr(\$0, index(\$0, \"/\") + 1, index(\$0, \")\") - index(\$0, \"/\") - 1)));
+            progress = int(($current_progress + (${progress[install_pacman_packages]} * 0.80) + (${progress[install_pacman_packages]} * 0.20) * percentage) * 100 / $total_progress);
+            message = substr(\$0, index(\$0, \")\") + 2);
+            print \"XXX\n\"progress\"\n\"substr(message, 0, length(message) - 3)\"\nXXX\"
         }
         {
             fflush(stdout)
         }
-    '
+    "
 }
 
 # TODO: AUR dependency checks

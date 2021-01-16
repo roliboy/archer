@@ -161,6 +161,37 @@ description[enable_archstrike_repository]='Enabling archstrike repository'
 description[enable_passwordless_sudo]="Enable passwordless sudo for wheel group"
 description[enable_autologin]="Enabling autologin for $username"
 
+# TODO: merge arrays
+# TODO: conditions to skip optional features
+# TODO: convert to cummulative values
+declare -A progress
+progress[create_partitions]=100
+progress[download_mirrorlist]=100
+[[ $feature_rank_mirrors = yes ]] && progress[rank_mirrors]=10000
+[[ $feature_netcache = yes ]] && progress[enable_netcache]=100
+progress[install_pacman_packages]=20000
+# condition for this
+progress[install_aur_packages]=100
+progress[install_bootloader]=200
+progress[generate_fstab]=100
+progress[generate_locale]=500
+progress[set_timezone]=100
+progress[configure_network]=100
+progress[set_root_password]=100
+progress[configure_pacman]=100
+[[ $has_battery = yes ]] && progress[configure_tlp]=100
+progress[configure_journald]=100
+progress[configure_coredump]=100
+progress[create_user]=100
+progress[enable_services]=200
+[[ $feature_archstrike_repository = yes ]] && progress[enable_archstrike_repository]=1000
+[[ $feature_passwordless_sudo = yes ]] && progress[enable_passwordless_sudo]=100
+[[ $feature_autologin = yes ]] && progress[enable_autologin]=100
+
+total_progress=0
+for item in ${progress[@]}; do
+    let total_progress+=$item
+done
 
 execution_order=(
     create_partitions
@@ -186,13 +217,22 @@ execution_order=(
     $([ "$feature_autologin" = yes ] && echo enable_autologin)
 )
 
-# whiptail --title "Progress" --gauge "Initializing" 0 $((`tput cols` * 3 / 4)) 0
-
 #TODO: replace this, it worked fine for older versions but now it needs a rework
 #'concatenate' progress bars
-for step in ${!execution_order[@]}; do
-    echo -e "XXX\n$(expr $step \* 100 / ${#execution_order[@]})\n${description[${execution_order[$step]}]}\nXXX"
-    ${execution_order[$step]}
+current_progress=0
+for step in ${execution_order[@]}; do
+    echo -e "XXX"
+    echo -e "$(($current_progress * 100 / $total_progress))"
+    echo -e "${description[$step]}"
+    echo -e "XXX"
+    $step
+    let current_progress+=${progress[$step]}
+    # :thinking_face:
+    # echo -e "XXX"
+    # echo -e "$(($current_progress * 100 / $total_progress))"
+    # echo -e "${description[$step]}"
+    # echo -e "XXX"
+    # 
 done | whiptail --title "Progress" --gauge "Initializing" 0 $((`tput cols` * 3 / 4)) 0
 
 mv /etc/pacman.conf.bak /etc/pacman.conf
