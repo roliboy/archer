@@ -37,9 +37,50 @@ download_mirrorlist() {
     done < /etc/pacman.d/mirrorlist
 }
 
+rank_mirrors() {
+    echo -ne '' > /tmp/mirrorlist
+
+    mirrorlist=($(awk '/Server/ { print $3 }' /etc/pacman.d/mirrorlist))
+    # packages=(gcc-fortran-10.2.0-4-x86_64.pkg.tar.zst glibc-2.32-5-x86_64.pkg.tar.zst icu-68.2-1-x86_64.pkg.tar.zst)
+    # TODO: dynamic package selection
+    packages=(bash-5.1.004-1-x86_64.pkg.tar.zst openssl-1.0-1.0.2.u-1-x86_64.pkg.tar.zst sqlite-3.34.0-1-x86_64.pkg.tar.zst)
+
+    total_downloads=$((${#mirrorlist[@]} * ${#packages[@]}))
+    
+    for i in ${!mirrorlist[@]}; do
+        host=$(grep -o '.*//[^/]*' <<< "${mirrorlist[i]}")
+        let index=$i+1
+        base_url="$(sed 's/$repo/core/g; s/$arch/x86_64/g' <<< ${mirrorlist[i]})"
+
+        start_time=$(date +%s%3N)
+        for package_index in ${!packages[@]}; do
+            url="$base_url/${packages[package_index]}"
+
+            echo -e 'XXX'
+            echo -e $(((current_progress * 100 + progress[rank_mirrors] * (i * ${#packages[@]} + package_index) * 100 / total_downloads) / total_progress))
+            # TODO: echo download speed
+            echo -e "Testing mirror $host"
+            echo -e 'XXX'
+
+            # TODO: handle timeouts
+            curl -s "$url" -o /dev/null --connect-timeout 2 2>archer.err
+        done
+        total_time=$(($(date +%s%3N) - start_time))
+
+        check_stderr && cat archer.err >> archer.err2
+
+        # TODO: clean up this
+        echo "$total_time Server = ${mirrorlist[i]}" >> /tmp/mirrorlist
+    done
+
+    cat /tmp/mirrorlist | sort -k1n | cut -d' ' -f2- > /etc/pacman.d/mirrorlist    
+    rm /tmp/mirrorlist
+#     TODO: debug log
+}
+
 # TODO: rank by file download speed
 # TODO: rework
-rank_mirrors() {
+rank_mirrors_ping() {
     echo -ne '' > /tmp/mirrorlist-ranked
 
     mirrorlist=($(awk '/Server/ { print $3 }' /etc/pacman.d/mirrorlist))
@@ -157,7 +198,7 @@ install_pacman_packages() {
 
     pacstrap /mnt ${packages[@]} 2>/dev/null | awk "
         /^:: Synchronizing package databases\.\.\.$/ {
-            progress = int($current_progress / $total_progress);
+            progress = int($current_progress * 100 / $total_progress);
             print \"XXX\n\"progress\"\nSynchronizing package databases\nXXX\"
         }
         /^Packages \([0-9]*\)/ {

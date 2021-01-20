@@ -19,6 +19,7 @@ set_dialog_colors
 # timedatectl set-ntp true
 # sleep 5
 
+# TODO: backup and restore host mirrorlist
 cp /etc/pacman.conf /etc/pacman.conf.bak
 
 cpu_vendor=$(detect_cpu_vendor)
@@ -161,9 +162,6 @@ description[enable_archstrike_repository]='Enabling archstrike repository'
 description[enable_passwordless_sudo]="Enable passwordless sudo for wheel group"
 description[enable_autologin]="Enabling autologin for $username"
 
-# TODO: merge arrays
-# TODO: conditions to skip optional features
-# TODO: convert to cummulative values
 declare -A progress
 progress[create_partitions]=100
 progress[download_mirrorlist]=100
@@ -196,8 +194,8 @@ done
 execution_order=(
     create_partitions
     download_mirrorlist
-    $([ "$feature_rank_mirrors" = yes ] && echo rank_mirrors)
-    $([ "$feature_netcache" = yes ] && echo enable_netcache)
+    $([[ $feature_rank_mirrors = yes ]] && echo rank_mirrors)
+    $([[ $feature_netcache = yes ]] && echo enable_netcache)
     install_pacman_packages
     install_aur_packages
     install_bootloader
@@ -207,18 +205,16 @@ execution_order=(
     configure_network
     set_root_password
     configure_pacman
-    $([ "$has_battery" = yes ] && echo configure_tlp)
+    $([[ $has_battery = yes ]] && echo configure_tlp)
     configure_journald
     configure_coredump
     create_user
     enable_services
-    $([ "$feature_archstrike_repository" = yes ] && echo enable_archstrike_repository)
-    $([ "$feature_passwordless_sudo" = yes ] && echo enable_passwordless_sudo)
-    $([ "$feature_autologin" = yes ] && echo enable_autologin)
+    $([[ $feature_archstrike_repository = yes ]] && echo enable_archstrike_repository)
+    $([[ $feature_passwordless_sudo = yes ]] && echo enable_passwordless_sudo)
+    $([[ $feature_autologin = yes ]] && echo enable_autologin)
 )
 
-#TODO: replace this, it worked fine for older versions but now it needs a rework
-#'concatenate' progress bars
 current_progress=0
 for step in ${execution_order[@]}; do
     echo -e "XXX"
@@ -227,16 +223,10 @@ for step in ${execution_order[@]}; do
     echo -e "XXX"
     $step
     let current_progress+=${progress[$step]}
-    # :thinking_face:
-    # echo -e "XXX"
-    # echo -e "$(($current_progress * 100 / $total_progress))"
-    # echo -e "${description[$step]}"
-    # echo -e "XXX"
-    # 
 done | whiptail --title "Progress" --gauge "Initializing" 0 $((`tput cols` * 3 / 4)) 0
 
 mv /etc/pacman.conf.bak /etc/pacman.conf
 
 whiptail --title 'Show log' --yesno "Show installation log?" 0 0 3>&1 1>&2 2>&3
 
-[ $? = 0 ] && whiptail --title 'archer.log' --textbox archer.log 0 0 3>&1 1>&2 2>&3
+[[ $? = 0 ]] && whiptail --title 'archer.log' --textbox archer.log 0 0 3>&1 1>&2 2>&3

@@ -2,27 +2,18 @@ detect_boot_mode() {
     [[ -d /sys/firmware/efi/efivars ]] && echo UEFI || echo BIOS
 }
 
-# TODO: return unknown if the cpu is neither intel nor amd
 detect_cpu_vendor() {
-    grep -q GenuineIntel /proc/cpuinfo 2>archer.err && echo intel
-    grep -q AuthenticAMD /proc/cpuinfo 2>archer.err && echo amd
+    grep -q GenuineIntel /proc/cpuinfo 2>archer.err && echo intel && return
+    grep -q AuthenticAMD /proc/cpuinfo 2>archer.err && echo amd && return
+    echo unknown
 }
 
-# TODO: rework this
-# TODO: return unknown on empty
+# TODO: add amd
 detect_gpu_configuration() {
-    lspci | grep VGA | grep -i intel && local vga_controller=intel
-    lspci | grep VGA | grep -i amd && local vga_controller=amd
-    lspci | grep 3D | grep -i intel && local gfx_accelerator=intel
-    lspci | grep 3D | grep -i amd && local gfx_accelerator=amd
-    lspci | grep 3D | grep -i nvidia && local gfx_accelerator=nvidia
-
-    [[ $vga_controller = amd ]] && local configuration=amd
-    [[ $vga_controller = intel ]] && local configuration=intel
-    [[ $vga_controller = nvidia ]] && local configuration=nvidia
-    [[ $vga_controller = intel ]] && [[ $gfx_accelerator = nvidia ]] && local configuration=optimus
-
-    echo $configuration
+    lspci | grep VGA | grep -qi intel && lspci | grep 3D | grep -qi nvidia && echo optimus && return
+    lspci | grep VGA | grep -qi intel && echo intel && return
+    lspci | grep VGA | grep -qi nvidia && echo nvidia && return
+    echo unknown
 }
 
 detect_battery() {
@@ -31,7 +22,7 @@ detect_battery() {
 }
 
 detect_wireless() {
-    lspci | grep -i network | grep -qi 'wireless\|WLAN\|wifi\|802\.11' && echo yes || echo no
+    lspci | grep Network | grep -qi 'wireless\|WLAN\|wifi\|802\.11' && echo yes || echo no
 }
 
 detect_bluetooth() {
