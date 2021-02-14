@@ -1,9 +1,7 @@
-# TODO: redirect errors to file
 # TODO: send shutdown signal to netcache
 # TODO: improve aur debug log
 # TODO: dual-boot support?
-# TODO: util functions for logging
-# TODO: show log on error
+# TODO: script parameters
 
 echo "[LOG]" > archer.log
 
@@ -15,12 +13,12 @@ info "boot mode: $boot_mode"
 set_terminal_colors
 set_dialog_colors
 
-# systemctl stop reflector
-# timedatectl set-ntp true
-# sleep 5
+systemctl stop reflector
+timedatectl set-ntp true
+sleep 5
 
-# TODO: backup and restore host mirrorlist
 cp /etc/pacman.conf /etc/pacman.conf.bak
+cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.bak
 
 cpu_vendor=$(detect_cpu_vendor)
 info "cpu vendor: $cpu_vendor"
@@ -144,8 +142,8 @@ description[create_partitions]="Creating partitions on $selected_drive"
 description[download_mirrorlist]='Downloading mirrorlist'
 description[rank_mirrors]='Ranking mirrors'
 description[enable_netcache]='Enabling netcache'
-description[install_pacman_packages]='Installing pacman packages'
-description[install_aur_packages]='Installing AUR packages'
+description[install_packages]='Installing packages'
+# description[install_aur_packages]='Installing AUR packages'
 description[install_bootloader]='Installing bootloader'
 description[generate_fstab]='Generating fstab'
 description[generate_locale]='Generating locale'
@@ -167,9 +165,9 @@ progress[create_partitions]=100
 progress[download_mirrorlist]=100
 [[ $feature_rank_mirrors = yes ]] && progress[rank_mirrors]=10000
 [[ $feature_netcache = yes ]] && progress[enable_netcache]=100
-progress[install_pacman_packages]=20000
+progress[install_packages]=20000
 # condition for this
-progress[install_aur_packages]=100
+# progress[install_aur_packages]=100
 progress[install_bootloader]=200
 progress[generate_fstab]=100
 progress[generate_locale]=500
@@ -196,8 +194,8 @@ execution_order=(
     download_mirrorlist
     $([[ $feature_rank_mirrors = yes ]] && echo rank_mirrors)
     $([[ $feature_netcache = yes ]] && echo enable_netcache)
-    install_pacman_packages
-    install_aur_packages
+    install_packages
+#     install_aur_packages
     install_bootloader
     generate_fstab
     generate_locale
@@ -226,6 +224,7 @@ for step in ${execution_order[@]}; do
 done | whiptail --title "Progress" --gauge "Initializing" 0 $((`tput cols` * 3 / 4)) 0
 
 mv /etc/pacman.conf.bak /etc/pacman.conf
+mv /etc/pacman.d/mirrorlist.bak /etc/pacman.d/mirrorlist
 
 whiptail --title 'Show log' --yesno "Show installation log?" 0 0 3>&1 1>&2 2>&3
 

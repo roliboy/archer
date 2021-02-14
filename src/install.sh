@@ -78,88 +78,41 @@ rank_mirrors() {
 #     TODO: debug log
 }
 
-# TODO: rank by file download speed
-# TODO: rework
-rank_mirrors_ping() {
-    echo -ne '' > /tmp/mirrorlist-ranked
-
-    mirrorlist=($(awk '/Server/ { print $3 }' /etc/pacman.d/mirrorlist))
-
-    for mirror in "${mirrorlist[@]}"; do
-        host=$(grep -o '.*//[^/]*' <<< "$mirror")
-        domain="$(cut -d'/' -f3 <<< $mirror)"
-        index="$(expr $index + 1)"
-
-        ping $domain -c 4 | awk "
-        /time=/ {
-            split(\$(NF-1), time, \"=\");
-            total += time[2];
-            crt++;
-            completed = ((($index - 1) * 4 + crt) / (${#mirrorlist[@]} * 4))
-            progress = int(($current_progress + ${progress[rank_mirrors]} * completed) * 100 / $total_progress)
-            print \"XXX\n\"progress\"\nPinging [$index/${#mirrorlist[@]}] $host - \"time[2]\" ms\nXXX\";
-            fflush(stdout);
-        }
-        END {
-            print total > \"/tmp/ping-result\"
-        }"
-
-        pingtime="$(cat /tmp/ping-result)"
-
-        echo "$pingtime $mirror" >> /tmp/mirrorlist-ranked
-
-        #url="$(eval echo $mirror)"
-
-        #echo "$url"
-#        package="$url/icu-1.22.4-3-x86_64.pkg.tar.xz"
-#         $(expr $step \* 100 / ${#execution_order[@]})
-        #groff_rtt="$({ time curl -s "$url/groff-1.22.4-3-x86_64.pkg.tar.xz" -o /dev/null; } 2>&1 | grep real)"
-        #echo "$groff_rtt"
-
-        #icu_rtt="$({ time curl -s "$url/icu-68.2-1-x86_64.pkg.tar.zst" -o /dev/null; } 2>&1 | grep real)"
-        #echo "$icu_rtt"
-
-        #curl https://mirrors.chroot.ro/archlinux/core/os/x86_64/ | grep -shoP '<tr>.*</tr>' | grep '>icu.*zst<'
-
-        #echo -ne '\n\n\n'
-    done
-    cat /tmp/mirrorlist-ranked | sort -nk1 | awk '{ print "Server = "$2 }' > /etc/pacman.d/mirrorlist
-    rm /tmp/ping-result
-    rm /tmp/mirrorlist-ranked
-#     TODO: debug log
-}
-
 enable_netcache() {
     sed -i "/\[core\]/i[netcache]\nSigLevel = Optional TrustAll\nServer = http://$netcache_ip:1337/\n" /etc/pacman.conf
 
     info "netcache repository added to pacman.conf: $(grep -q netcache /etc/pacman.conf && echo yes || echo no)"
 }
 
-install_pacman_packages() {
-    local packages=(
+install_packages() {
+    local aur_packages=(
+        $([[ $desktop_environment = dwm ]] && echo dwm)
+#         $([ "$optimus_backend" = optimus-manager ] && echo optimus-manager)
+        ${extra_packages_aur[@]}
+    )
+
+    local official_packages=(
         base
         sudo
 
         make
         patch
 
-        fakeroot
-        binutils
+        $([[ ${#aur_packages[@]} != 0 ]] && echo fakeroot)
+        $([[ ${#aur_packages[@]} != 0 ]] && echo binutils)
 
-# TODO: something about this?
+#         pkgconf?
+#         gcc?
 
-        pkgconf
-        gcc
-
-#         linux
-#         linux-firmware
+        linux
+        linux-firmware
 
         $([[ $cpu_vendor = intel ]] && echo intel-ucode)
         $([[ $cpu_vendor = amd ]] && echo amd-ucode)
 
         networkmanager
 
-        #$([ "$gpu_configuration" = nvidia ] && echo nvidia)
+        $([[ $gpu_configuration = nvidia ]] && echo nvidia)
 
         #$([ "$optimus_backend" = bumblebee ] && echo nvidia)
         #$([ "$optimus_backend" = bumblebee ] && echo bbswitch)
@@ -186,6 +139,8 @@ install_pacman_packages() {
         $([[ $desktop_environment = i3 ]] && echo i3-gaps xorg-server xorg-xinit)
 
         $([[ $desktop_environment = 'KDE Plasma' ]] && echo bluedevil breeze-gtk kde-gtk-config kdeplasma-addons kgamma5 khotkeys kinfocenter kscreen kwayland-integration kwrited plasma-browser-integration plasma-desktop plasma-disks plasma-nm plasma-pa plasma-thunderbolt plasma-vault plasma-workspace plasma-workspace-wallpapers powerdevil sddm-kcm xdg-desktop-portal-kde)
+        
+#         bluedevil breeze breeze-gtk kactivitymanagerd kde-cli-tools kdecoration kde-gtk-config kdeplasma-addons kgamma5 khotkeys kinfocenter kmenuedit kscreen kscreenlocker ksshaskpass ksysguard kwallet-pam kwayland-integration kwayland-server kwin kwrited plasma-browser-integration plasma-desktop plasma-disks plasma-integration plasma-nm plasma-pa plasma-thunderbolt plasma-vault plasma-workspace plasma-workspace-wallpapers polkit-kde-agent powerdevil sddm-kcm systemsettings xdg-desktop-portal-kde
 
         #$([ "$feature_bluetooth_audio" = yes ] && echo pulseaudio-bluetooth)
 
@@ -194,11 +149,17 @@ install_pacman_packages() {
         ${extra_packages_official[@]}
     )
 
-    for package in ${packages[@]}; do info "package: $package"; done
+    for package in ${official_packages[@]}; do info "package: $package"; done
+    
 
-    pacstrap /mnt ${packages[@]} 2>/dev/null | awk "
+    pacstrap /mnt ${official_packages[@]} 2>/dev/null | awk "
+        BEGIN {
+            current = $current_progress;
+            weight = ${progress[install_packages]} * $([[ ${#aur_packages[@]} == 0 ]] && echo 1 || echo 0.6);
+            scale = 100 / $total_progress;
+        }
         /^:: Synchronizing package databases\.\.\.$/ {
-            progress = int($current_progress * 100 / $total_progress);
+            progress = int(current * scale);
             print \"XXX\n\"progress\"\nSynchronizing package databases\nXXX\"
         }
         /^Packages \([0-9]*\)/ {
@@ -206,25 +167,25 @@ install_pacman_packages() {
         }
         /^downloading .*\.pkg\.tar.*\.\.\.$/ {
             dlindex++;
-            progress = int(($current_progress + (${progress[install_pacman_packages]} * 0.4) * dlindex / total) * 100 / $total_progress);
+            progress = int((current + 0.4 * weight * dlindex / total) * scale);
             print \"XXX\n\"progress\"\nDownloading \"substr(\$2, 1, match(\$2, /\.pkg\.tar.*/) - 1)\"\nXXX\"
         }
         /^checking .*\.\.\.$/ {
-            progress = int(($current_progress + (${progress[install_pacman_packages]} * 0.4)) * 100 / $total_progress);
+            progress = int((current + 0.4 * weight) * scale);
             print \"XXX\n\"progress\"\nC\"substr(\$0, 2, length(\$0) - 4)\"\nXXX\"
         }
         /^installing .*\.\.\.$/ {
             insindex++;
-            progress = int(($current_progress + (${progress[install_pacman_packages]} * 0.4) + (${progress[install_pacman_packages]} * 0.4) * insindex / total) * 100 / $total_progress);
+            progress = int((current + 0.4 * weight + 0.4 * weight * insindex / total) * scale);
             print \"XXX\n\"progress\"\nInstalling \"substr(\$2, 1, length(\$2) - 3)\"\nXXX\"
         }
         /^:: Running post-transaction hooks\.\.\.$/ {
-            progress = int(($current_progress + ${progress[install_pacman_packages]}) * 0.8 / $total_progress);
+            progress = int((current + 0.8 * weight) * scale);
             print \"XXX\n\"progress\"\nRunning post-transaction hooks\nXXX\"
         }
         /^\([ 0-9]+\/[0-9]+\)/ {
             percentage = (int(substr(\$0, 2, index(\$0, \"/\") - 2)) / int(substr(\$0, index(\$0, \"/\") + 1, index(\$0, \")\") - index(\$0, \"/\") - 1)));
-            progress = int(($current_progress + (${progress[install_pacman_packages]} * 0.80) + (${progress[install_pacman_packages]} * 0.20) * percentage) * 100 / $total_progress);
+            progress = int((current + 0.8 * weight + 0.2 * weight * percentage) * scale);
             message = substr(\$0, index(\$0, \")\") + 2);
             print \"XXX\n\"progress\"\n\"substr(message, 0, length(message) - 3)\"\nXXX\"
         }
@@ -232,30 +193,24 @@ install_pacman_packages() {
             fflush(stdout)
         }
     "
-}
+    
+    
+    # TODO: remove helper after installation
 
-# TODO: AUR dependency checks
-# TODO: progress feedback
-install_aur_packages() {
-    local packages=(
-        $([[ $desktop_environment = dwm ]] && echo dwm)
-#         $([ "$optimus_backend" = optimus-manager ] && echo optimus-manager)
-        ${extra_packages_aur[@]}
-    )
-
-#     TODO: remove helper after installation
-    [[ ${#packages[@]} = 0 ]] && return
-
-    for package in ${packages[@]}; do info "AUR package: $package"; done
+    [[ ${#aur_packages[@]} = 0 ]] && return
+    
+#     for package in ${aur_packages[@]}; do info "AUR package: $package"; done
 
     sed -i '/^root.*/a nobody ALL=(ALL) NOPASSWD: ALL' /mnt/etc/sudoers
 
-    # TODO: rework this kek
     # TODO: progress feedback
-    local command="$(for i in $(seq 0 $(expr ${#packages[@]} - 1)); do
-        echo "echo -e 'XXX\n$(expr $i \* 100 / ${#packages[@]})\nInstalling ${packages[$i]}\nXXX' &&"
-        echo "sudo -u nobody bash -c 'HOME=/tmp; yay -S ${packages[$i]} --noconfirm >/dev/null 2>&1' &&"
-    done) :"
+    # TODO: replace yay
+    local command="$(for i in $(seq 0 $(expr ${#aur_packages[@]} - 1)); do
+        echo "echo -e 'XXX\n$(awk "BEGIN{print int(($current_progress + 0.6 * ${progress[install_packages]} + ($i / ${#aur_packages[@]}) * 0.4 * ${progress[install_packages]}) * 100 / $total_progress)}")\nInstalling ${aur_packages[$i]}\nXXX' &&"
+        echo "sudo -u nobody bash -c 'HOME=/tmp; yay -S ${aur_packages[$i]} --noconfirm >/dev/null 2>&1' &&"
+    done)"
+    
+    echo -e "XXX\n$(awk "BEGIN{print int(($current_progress + 0.6 * ${progress[install_packages]}) * 100 / $total_progress)}")\nInitializing AUR build system\nXXX"
 
     arch-chroot /mnt /bin/bash <<< "cd /tmp &&
         curl -sO https://aur.archlinux.org/cgit/aur.git/snapshot/yay-bin.tar.gz >/dev/null 2>&1 &&
@@ -265,12 +220,14 @@ install_aur_packages() {
         cd /tmp &&
         rm yay-bin.tar.gz &&
         rm -rf yay-bin &&
-        $command"
+        $command
+        pacman -Rns --noconfirm yay-bin"
 
     sed -i '/^nobody.*/d' /mnt/etc/sudoers
 
-    # TODO: check each individual package
-    info "aur packages installed: $(arch-chroot /mnt /bin/bash <<< 'pacman -Qm | wc -l')"
+    for package in ${aur_packages[@]}; do
+        info "AUR package '$package': $(arch-chroot /mnt /bin/bash <<< "pacman -Qs ^$package$ >/dev/null && echo installed || echo not installed")"
+    done
 }
 
 #TODO: other bootloader options
