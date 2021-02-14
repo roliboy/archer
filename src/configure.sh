@@ -33,29 +33,31 @@ create_user() {
         chown -R $username:$username /home/$username && \
         usermod --shell /bin/$login_shell $username"
 
-    [[ $optimus_backend = bumblebee ]] && arch-chroot /mnt /bin/bash <<< "gpasswd -a $username bumblebee > /dev/null"
+    [[ $optimus_backend = bumblebee ]] && arch-chroot /mnt /bin/bash <<< "gpasswd -a $username bumblebee >/dev/null"
 
     info "user created: $(grep $username /mnt/etc/shadow | grep -q '\$6\$' && echo yes || echo no)"
 }
 
 # TODO: redirect errors
 enable_services() {
-    arch-chroot /mnt /bin/bash <<< "systemctl enable NetworkManager.service > /dev/null 2>&1"
+    arch-chroot /mnt /bin/bash <<< "systemctl enable NetworkManager.service >/dev/null 2>&1"
+    
+    [[ $feature_bluetooth_audio = yes ]] arch-chroot /mnt /bin/bash <<< "systemctl enable bluetooth.service >/dev/null 2>&1"
 
-    [[ $has_battery = yes ]] && arch-chroot /mnt /bin/bash <<< "systemctl enable tlp.service > /dev/null 2>&1"
+    [[ $has_battery = yes ]] && arch-chroot /mnt /bin/bash <<< "systemctl enable tlp.service >/dev/null 2>&1"
 
     [[ $has_battery = yes ]] && [[ $has_wireless = yes ]] && \
-        arch-chroot /mnt /bin/bash <<< "systemctl enable NetworkManager-dispatcher.service > /dev/null 2>&1 && \
-            systemctl mask systemd-rfkill.service > /dev/null 2>&1 && \
-            systemctl mask systemd-rfkill.socket > /dev/null 2>&1"
+        arch-chroot /mnt /bin/bash <<< "systemctl enable NetworkManager-dispatcher.service >/dev/null 2>&1 && \
+            systemctl mask systemd-rfkill.service >/dev/null 2>&1 && \
+            systemctl mask systemd-rfkill.socket >/dev/null 2>&1"
 
-    [[ $has_ssd = yes ]] && arch-chroot /mnt /bin/bash <<< "systemctl enable fstrim.timer > /dev/null 2>&1"
-    [[ $optimus_backend = optimus ]] && arch-chroot /mnt /bin/bash <<< "systemctl enable bumblebeed.service > /dev/null 2>&1"
-    [[ $optimus_backend = optimus-manager ]] && arch-chroot /mnt /bin/bash <<< "systemctl enable optimus-manager.service > /dev/null 2>&1"
+    [[ $has_ssd = yes ]] && arch-chroot /mnt /bin/bash <<< "systemctl enable fstrim.timer >/dev/null 2>&1"
+    [[ $optimus_backend = optimus ]] && arch-chroot /mnt /bin/bash <<< "systemctl enable bumblebeed.service >/dev/null 2>&1"
+    [[ $optimus_backend = optimus-manager ]] && arch-chroot /mnt /bin/bash <<< "systemctl enable optimus-manager.service >/dev/null 2>&1"
 
     [[ $desktop_environment = dwm ]] && echo 'exec dwm' > "/mnt/home/$username/.xinitrc"
     [[ $desktop_environment = i3 ]] && echo 'exec i3' > "/mnt/home/$username/.xinitrc"
-    [[ $desktop_environment = 'KDE Plasma' ]] && arch-chroot /mnt /bin/bash <<< "systemctl enable sddm.service"
+    [[ $desktop_environment = 'KDE Plasma' ]] && arch-chroot /mnt /bin/bash <<< "systemctl enable sddm.service >/dev/null 2>&1"
 }
 
 enable_archstrike_repository() {

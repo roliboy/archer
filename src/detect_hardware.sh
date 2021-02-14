@@ -31,5 +31,5 @@ detect_bluetooth() {
 }
 
 detect_ssd() {
-    grep 0 /sys/block/*/queue/rotational 2>archer.err && echo yes || echo no
+    grep -q 0 /sys/block/*/queue/rotational 2>archer.err && echo yes || echo no
 }
