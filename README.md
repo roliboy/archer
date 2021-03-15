@@ -2,14 +2,14 @@
 
 # archer
 
-Automated Arch Linux install script for brainlets
+automated arch linux install script for brainlets
 
 ### anon what do
 
 - download arch
 - burn arch
 - boot arch
-- `curl -s roliboy.ml/archer | bash`
+- `curl -Ls roliboy.ml/archer | bash`
 - done
 
 disclaimer: it will nuke your entire drive
@@ -60,7 +60,13 @@ timezone selection
 ![timezone selection](/images/timezone-selection.png)
 
 shell selection
-![shell selection](/images/shell-selection.png)
+![shell selection](/images/default-shell-selection.png)
+
+hostname input
+![hostname input](/images/hostname-input.png)
+
+password input
+![password input](/images/password-input.png)
 
 optional features selection
 ![optional features selection](/images/optional-features-selection.png)
@@ -71,8 +77,11 @@ desktop environment selection
 mirrorlist ranking
 ![mirrorlist ranking](/images/mirrorlist-ranking.png)
 
-installation
-![installation](/images/downloading-packages.png)
+downloading packages
+![downloading packages](/images/downloading-packages.png)
+
+installing packages
+![installing packages](/images/installing-packages.png)
 
 ### setup for testing
 
